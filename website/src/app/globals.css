@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f4ef;
+  --background-soft: #f2efe9;
+  --foreground: #1d1d1f;
+  --foreground-muted: #6b6560;
+
+  --accent-rust: #c97b52;
+  --accent-rust-dark: #6f2d1e;
+  --accent-tan: #dcb99e;
+  --accent-clay: #d8c3ba;
+  --accent-stone: #b5aca4;
+  --accent-sky: #a9bdc9;
+
+  --border-soft: #1c13104d;
+
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-soft: var(--background-soft);
+  --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+
+  --color-accent-rust: var(--accent-rust);
+  --color-accent-rust-dark: var(--accent-rust-dark);
+  --color-accent-tan: var(--accent-tan);
+  --color-accent-clay: var(--accent-clay);
+  --color-accent-stone: var(--accent-stone);
+  --color-accent-sky: var(--accent-sky);
+
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-script: var(--font-caveat);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+@keyframes hero-enter {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-hero-enter {
+  animation: hero-enter 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
