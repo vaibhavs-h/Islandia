@@ -19,6 +19,27 @@ function lerpClamp(
   return outMin + t * (outMax - outMin);
 }
 
+function easeInOutCubic(t: number) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+// Native `scrollTo({ behavior: "smooth" })` durations vary with distance in a
+// way that reads as an abrupt jump for a snap this size - animating it
+// ourselves keeps the duration (and easing) fixed regardless of distance.
+function smoothScrollTo(target: number, duration = 650) {
+  const start = window.scrollY;
+  const distance = target - start;
+  const startTime = performance.now();
+
+  function step(now: number) {
+    const t = Math.min(1, (now - startTime) / duration);
+    window.scrollTo(0, start + distance * easeInOutCubic(t));
+    if (t < 1) requestAnimationFrame(step);
+  }
+
+  requestAnimationFrame(step);
+}
+
 type ChapterWindow = { in0: number; in1: number; out0: number; out1: number };
 
 function applyChapter(
@@ -99,6 +120,42 @@ export default function Hero() {
     videoRef.current?.pause();
     syncToProgress(scrollYProgress.get());
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Once scroll passes the container's pinned range (progress reaches 1),
+  // the sticky video releases and slides away over the final viewport's
+  // worth of scroll while the next section slides up underneath it - if the
+  // user stops mid-release, that split view reads as a layout glitch. Snap
+  // to whichever end is closer once scrolling settles there.
+  useEffect(() => {
+    let settleTimer: ReturnType<typeof setTimeout> | undefined;
+
+    function snapIfStraddling() {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const viewportHeight = window.innerHeight;
+      const pinEnd = container.offsetTop + container.offsetHeight - viewportHeight;
+      const releaseEnd = container.offsetTop + container.offsetHeight;
+      const midpoint = pinEnd + viewportHeight / 2;
+      const epsilon = 2;
+
+      const scrollY = window.scrollY;
+      if (scrollY <= pinEnd + epsilon || scrollY >= releaseEnd - epsilon) return;
+
+      smoothScrollTo(scrollY < midpoint ? pinEnd : releaseEnd);
+    }
+
+    function onScroll() {
+      if (settleTimer) clearTimeout(settleTimer);
+      settleTimer = setTimeout(snapIfStraddling, 150);
+    }
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (settleTimer) clearTimeout(settleTimer);
+    };
   }, []);
 
   return (
