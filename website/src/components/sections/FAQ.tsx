@@ -1,4 +1,5 @@
 import Reveal from "@/components/site/Reveal";
+import SectionCard from "@/components/site/SectionCard";
 
 const faqs = [
   {
@@ -25,23 +26,33 @@ const faqs = [
 
 export default function FAQ() {
   return (
-    <section id="faq" className="px-6 py-28 sm:px-10">
-      <Reveal className="mx-auto max-w-2xl text-center">
-        <h2 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-          Questions, answered.
-        </h2>
+    <section id="faq" className="px-6 py-14 sm:px-10">
+      <Reveal className="mx-auto max-w-2xl">
+        <SectionCard className="px-4 py-14 text-center sm:px-6">
+          <span className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-foreground-muted">
+            Fair questions
+          </span>
+          <h2 className="mt-4 font-display text-7xl font-semibold tracking-tight sm:text-[5.625rem]">
+            Before you <span className="font-black italic">ask.</span>
+          </h2>
+        </SectionCard>
       </Reveal>
 
-      <Reveal className="mx-auto mt-12 max-w-2xl divide-y divide-foreground/10">
-        {faqs.map((faq) => (
-          <details key={faq.q} className="group py-5">
-            <summary className="flex cursor-pointer list-none items-center justify-between text-left font-medium text-foreground">
-              {faq.q}
-              <span className="ml-4 text-foreground-muted transition-transform group-open:rotate-45">
+      <Reveal className="mx-auto mt-16 max-w-2xl divide-y divide-foreground/10">
+        {faqs.map((faq, i) => (
+          <details key={faq.q} className="group py-6">
+            <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-left">
+              <span className="flex items-baseline gap-4">
+                <span className="font-mono text-xs text-foreground-muted">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span className="font-medium text-foreground">{faq.q}</span>
+              </span>
+              <span className="shrink-0 text-lg font-light leading-none text-foreground-muted transition-transform group-open:rotate-45">
                 +
               </span>
             </summary>
-            <p className="mt-3 text-sm leading-relaxed text-foreground-muted">
+            <p className="mt-3 pl-8 text-sm leading-relaxed text-foreground-muted">
               {faq.a}
             </p>
           </details>
