@@ -3,6 +3,7 @@
 import { useMotionValueEvent, useScroll } from "framer-motion";
 import { useEffect, useRef } from "react";
 import AppleMark from "@/components/site/AppleMark";
+import SectionCard from "@/components/site/SectionCard";
 import LaurelBranch from "./LaurelBranch";
 
 const VIDEO_DURATION = 11.2;
@@ -144,24 +145,35 @@ export default function Hero() {
         <div
           ref={chapter2Ref}
           style={{ opacity: 0 }}
-          className="pointer-events-none absolute inset-x-0 top-0 h-[50vh]"
+          className="pointer-events-none absolute inset-x-0 top-0 w-full"
         >
-          <div className="flex h-full items-center justify-center px-6">
-            <div className="relative max-w-3xl">
-              <div className="absolute -top-8 -left-8 flex items-center gap-2">
-                <span className="h-5 w-8 border-t-2 border-l-2 border-foreground/50" />
-                <span className="font-mono text-xs tracking-[0.2em] text-foreground/50">
-                  01
-                </span>
+          <div className="flex justify-center px-6 pt-5 sm:pt-7">
+            <SectionCard
+              className="max-w-4xl bg-black px-10 py-6 sm:px-16 sm:py-8"
+              dotClassName="fill-white/20"
+            >
+              <div className="flex flex-col items-start">
+                <p className="text-xs text-[crimson] md:text-md lg:text-lg xl:text-2xl">
+                  I believe
+                </p>
+                <div className="font-display text-lg tracking-tighter text-white md:text-4xl lg:text-[3.375rem] xl:text-7xl">
+                  <div className="flex gap-1 md:gap-2 lg:gap-3 xl:gap-4">
+                    <span className="font-semibold">&quot;Design should be</span>
+                    <span className="font-thin">easy to</span>
+                  </div>
+                  <div className="flex gap-1 md:gap-2 lg:gap-3 xl:gap-4">
+                    <span className="font-thin">understand</span>
+                    <span className="font-semibold">because</span>
+                    <span className="font-thin">simple</span>
+                  </div>
+                  <div className="flex gap-1 md:gap-2 lg:gap-3 xl:gap-4">
+                    <span className="font-thin">ideas</span>
+                    <span className="font-semibold">are quicker to</span>
+                  </div>
+                  <span className="font-semibold">grasp...&quot;</span>
+                </div>
               </div>
-              <p className="text-center font-display text-5xl font-bold tracking-tight leading-snug text-foreground sm:text-6xl">
-                Now Playing, synced lyrics, AirPods battery.{" "}
-                <span className="font-black italic">
-                  Right when you need them.
-                </span>
-              </p>
-              <span className="absolute -right-8 -bottom-8 h-5 w-8 border-r-2 border-b-2 border-foreground/50" />
-            </div>
+            </SectionCard>
           </div>
         </div>
 
@@ -173,7 +185,7 @@ export default function Hero() {
                 style={{ opacity: 0 }}
                 className="absolute top-1/2 right-full mr-3 -translate-y-1/2 sm:mr-6"
               >
-                <LaurelBranch className="hidden h-56 w-[4.375rem] text-foreground/70 sm:block md:h-[15.75rem] md:w-[4.8125rem]" />
+                <LaurelBranch className="hidden h-[17.5rem] w-[5.46875rem] text-black sm:block md:h-[19.6875rem] md:w-[6.015625rem]" />
               </span>
               <h2
                 ref={ctaHeadingRef}
@@ -189,7 +201,7 @@ export default function Hero() {
               >
                 <LaurelBranch
                   flip
-                  className="hidden h-56 w-[4.375rem] text-foreground/70 sm:block md:h-[15.75rem] md:w-[4.8125rem]"
+                  className="hidden h-[17.5rem] w-[5.46875rem] text-black sm:block md:h-[19.6875rem] md:w-[6.015625rem]"
                 />
               </span>
             </div>
