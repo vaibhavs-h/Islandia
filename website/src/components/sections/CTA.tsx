@@ -7,7 +7,7 @@ export default function CTA() {
   const [submitted, setSubmitted] = useState(false);
 
   return (
-    <section id="pricing" className="px-6 py-28 sm:px-10">
+    <section id="pricing" className="px-6 py-14 sm:px-10">
       <Reveal className="mx-auto flex max-w-xl flex-col items-center rounded-3xl bg-background-soft px-8 py-14 text-center">
         <h2 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
           Be first to know.
