@@ -33,6 +33,8 @@
   --color-accent-stone: var(--accent-stone);
   --color-accent-sky: var(--accent-sky);
 
+  --color-border-soft: var(--border-soft);
+
   --font-sans: var(--font-body);
   --font-display: var(--font-display);
   --font-script: var(--font-caveat);
