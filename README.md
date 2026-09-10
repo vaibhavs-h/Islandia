@@ -18,19 +18,19 @@ Mac's top-of-screen real estate mostly sits unused. Checking what's playing or h
 
 - **App shell** — Flutter (Dart) compiled to native macOS, using `window_manager` for a borderless, always-on-top, notch-positioned window. Chosen over Electron (footprint) and pure Swift (shared, learnable framework).
 - **Native bridge** — a thin Swift platform-channel layer for what Flutter can't reach directly: MediaRemote (system Now Playing data), CoreBluetooth (AirPods battery), IOKit (power/charging state), and a third-party weather API.
-- **Marketing site** — Next.js + Tailwind + Framer Motion, in [`website/`](website/).
+- **Marketing site** — Next.js + Tailwind + Framer Motion, at the repo root.
 
 ## Repo layout
 
-- `website/` — the marketing site (Next.js). Run it locally with:
+This repo is currently just the marketing site (Next.js), at the root. Run it locally with:
 
-  ```bash
-  cd website
-  npm run dev
-  ```
+```bash
+npm run dev
+```
 
-  Then open [http://localhost:3000](http://localhost:3000).
-- The macOS app itself will live as a sibling directory once that phase starts.
+Then open [http://localhost:3000](http://localhost:3000).
+
+The macOS app itself will live as a sibling directory (e.g. `app/`) once that phase starts.
 
 ## Roadmap
 
