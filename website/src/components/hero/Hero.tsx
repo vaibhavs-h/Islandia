@@ -275,17 +275,17 @@ export default function Hero() {
               className="mt-4 flex w-full items-center justify-center gap-4"
             >
               <a
-                href="#notify"
-                className="flex items-center gap-2.5 rounded-full bg-foreground px-6.25 py-2.5 text-[1.09375rem] font-medium text-background transition-opacity hover:opacity-85"
+                href="#pricing"
+                className="flex items-center gap-2.5 rounded-full bg-foreground px-6.25 py-2.5 text-[1.09375rem] font-medium text-background transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-[1.03] hover:opacity-85 active:scale-95"
               >
                 <AppleMark className="h-5 w-5" />
-                Get notified at launch
+                Download for Mac
               </a>
               <a
                 href="#features"
-                className="text-[1.09375rem] font-medium text-foreground underline underline-offset-4 transition-opacity hover:opacity-70"
+                className="text-[1.09375rem] font-medium text-foreground underline underline-offset-4 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:opacity-70 active:scale-95"
               >
-                See what&rsquo;s coming
+                Purchase
               </a>
             </div>
           </div>
