@@ -33,7 +33,13 @@ function smoothScrollTo(target: number, duration = 650) {
 
   function step(now: number) {
     const t = Math.min(1, (now - startTime) / duration);
-    window.scrollTo(0, start + distance * easeInOutCubic(t));
+    // `behavior: "instant"` is required here: the page sets a global CSS
+    // `scroll-behavior: smooth` (for anchor links), and a bare
+    // `window.scrollTo(x, y)` defaults to behavior "auto", which inherits
+    // that CSS value. Without overriding it, the browser would smooth its
+    // way to *each frame's* target on top of this rAF loop's own easing,
+    // stacking two animations and reading as stutter.
+    window.scrollTo({ top: start + distance * easeInOutCubic(t), behavior: "instant" });
     if (t < 1) requestAnimationFrame(step);
   }
 
@@ -60,13 +66,32 @@ const CHAPTERS: Record<string, ChapterWindow> = {
   // in0/in1 sit at or below 0 so the intro is already fully visible at
   // progress 0 - both on first paint and whenever scroll returns to the top.
   intro: { in0: -0.01, in1: 0, out0: 0.05, out1: 0.14 },
-  chapter2: { in0: 0.32, in1: 0.39, out0: 0.52, out1: 0.58 },
+  chapter2: { in0: 0.3, in1: 0.4, out0: 0.65, out1: 0.75 },
   // out0/out1 sit at/above 1 (unreachable) so these hold at full opacity
   // once in - this is the last beat of the hero, it stays instead of fading.
   ctaHeading: { in0: 0.76, in1: 0.79, out0: 1, out1: 1.01 },
-  ctaSub: { in0: 0.785, in1: 0.81, out0: 1, out1: 1.01 },
-  ctaButtons: { in0: 0.8, in1: 0.83, out0: 1, out1: 1.01 },
+  // Sub, buttons, and the laurel (below) share one 0.15-wide duration -
+  // same slow pace for all three, just staggered starts for the cascade.
+  ctaSub: { in0: 0.785, in1: 0.935, out0: 1, out1: 1.01 },
+  ctaButtons: { in0: 0.8, in1: 0.95, out0: 1, out1: 1.01 },
 };
+
+// Must match the 14% fade band hardcoded into the `.laurel-grow` mask in
+// globals.css. Reveal is driven past 100 (to 100 + the band width) so the
+// fade band clears the branch's bottom tip once fully grown, instead of
+// leaving it permanently dim.
+const LAUREL_FADE_PCT = 14;
+const LAUREL_WINDOW = { in0: 0.79, in1: 0.94 };
+
+function applyLaurelReveal(
+  el: HTMLElement | null,
+  progress: number,
+  window: { in0: number; in1: number },
+) {
+  if (!el) return;
+  const reveal = lerpClamp(progress, window.in0, window.in1, 0, 100 + LAUREL_FADE_PCT);
+  el.style.setProperty("--laurel-reveal", `${reveal}%`);
+}
 
 export default function Hero() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -100,8 +125,8 @@ export default function Hero() {
     applyChapter(ctaHeadingRef.current, latest, CHAPTERS.ctaHeading);
     applyChapter(ctaSubRef.current, latest, CHAPTERS.ctaSub);
     applyChapter(ctaButtonsRef.current, latest, CHAPTERS.ctaButtons);
-    applyChapter(ctaLaurelLeftRef.current, latest, CHAPTERS.ctaButtons);
-    applyChapter(ctaLaurelRightRef.current, latest, CHAPTERS.ctaButtons);
+    applyLaurelReveal(ctaLaurelLeftRef.current, latest, LAUREL_WINDOW);
+    applyLaurelReveal(ctaLaurelRightRef.current, latest, LAUREL_WINDOW);
 
     if (scrollHintRef.current) {
       scrollHintRef.current.style.opacity = String(
@@ -185,14 +210,14 @@ export default function Hero() {
           <div className="flex h-[50vh] flex-col items-center justify-center text-center">
             <span
               className="animate-hero-enter mb-4 flex items-center gap-2 font-mono text-[0.9375rem] font-bold uppercase tracking-[0.25em] text-foreground/70"
-              style={{ animationDelay: "150ms" }}
+              style={{ animationDelay: "450ms" }}
             >
               <AppleMark className="h-[0.9375rem] w-[0.9375rem]" />
               For macOS
             </span>
             <h1
               className="animate-hero-enter font-display text-[clamp(4.375rem,16.25vw,11.875rem)] font-black leading-[0.9] tracking-tight text-foreground"
-              style={{ animationDelay: "300ms" }}
+              style={{ animationDelay: "200ms" }}
             >
               Islandia
             </h1>
@@ -239,10 +264,9 @@ export default function Hero() {
             <div className="relative flex justify-center">
               <span
                 ref={ctaLaurelLeftRef}
-                style={{ opacity: 0 }}
-                className="absolute top-1/2 right-full mr-3 -translate-y-1/2 sm:mr-6"
+                className="laurel-grow absolute top-1/2 right-full mr-3 -translate-y-1/2 sm:mr-6"
               >
-                <LaurelBranch className="hidden h-[17.5rem] w-[5.46875rem] text-black sm:block md:h-[19.6875rem] md:w-[6.015625rem]" />
+                <LaurelBranch className="hidden h-[17.5rem] w-[5.46875rem] sm:block md:h-[19.6875rem] md:w-[6.015625rem]" />
               </span>
               <h2
                 ref={ctaHeadingRef}
@@ -253,12 +277,11 @@ export default function Hero() {
               </h2>
               <span
                 ref={ctaLaurelRightRef}
-                style={{ opacity: 0 }}
-                className="absolute top-1/2 left-full ml-3 -translate-y-1/2 sm:ml-6"
+                className="laurel-grow absolute top-1/2 left-full ml-3 -translate-y-1/2 sm:ml-6"
               >
                 <LaurelBranch
                   flip
-                  className="hidden h-[17.5rem] w-[5.46875rem] text-black sm:block md:h-[19.6875rem] md:w-[6.015625rem]"
+                  className="hidden h-[17.5rem] w-[5.46875rem] sm:block md:h-[19.6875rem] md:w-[6.015625rem]"
                 />
               </span>
             </div>
