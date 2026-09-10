@@ -1,50 +1,39 @@
-"use client";
-
-import { useState } from "react";
 import Reveal from "@/components/site/Reveal";
+import SectionCard from "@/components/site/SectionCard";
+import AppleMark from "@/components/site/AppleMark";
 
 export default function CTA() {
-  const [submitted, setSubmitted] = useState(false);
-
   return (
     <section id="pricing" className="px-6 py-14 sm:px-10">
-      <Reveal className="mx-auto flex max-w-xl flex-col items-center rounded-3xl bg-background-soft px-8 py-14 text-center">
-        <h2 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-          Be first to know.
-        </h2>
-        <p className="mt-4 max-w-sm text-foreground-muted">
-          One-time purchase, no subscription — just like it should be. Leave
-          your email and we&rsquo;ll tell you the moment Islandia is ready to
-          download.
-        </p>
-
-        {submitted ? (
-          <p className="mt-8 text-sm font-medium text-accent-rust-dark">
-            You&rsquo;re on the list — thanks for the early interest.
+      <Reveal className="mx-auto max-w-3xl">
+        <SectionCard className="px-8 py-14 text-center">
+          <span className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-foreground-muted">
+            One more scroll saved
+          </span>
+          <h2 className="mt-4 font-display text-7xl font-semibold tracking-tight sm:text-[5.625rem]">
+            Give the top of your screen{" "}
+            <span className="font-black italic">a job.</span>
+          </h2>
+          <p className="mt-4 text-foreground-muted">
+            Download Islandia for macOS.
           </p>
-        ) : (
-          <form
-            id="notify"
-            onSubmit={(e) => {
-              e.preventDefault();
-              setSubmitted(true);
-            }}
-            className="mt-8 flex w-full max-w-sm flex-col gap-3 sm:flex-row"
-          >
-            <input
-              type="email"
-              required
-              placeholder="you@example.com"
-              className="w-full flex-1 rounded-full border border-foreground/15 bg-background px-5 py-3 text-sm outline-none focus:border-foreground/40"
-            />
-            <button
-              type="submit"
-              className="rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition-opacity hover:opacity-85"
+
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <a
+              href="#"
+              className="flex items-center gap-2.5 rounded-full bg-foreground px-6.25 py-3 text-sm font-medium text-background transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-[1.03] hover:opacity-85 active:scale-95"
             >
-              Notify me
-            </button>
-          </form>
-        )}
+              <AppleMark className="h-4 w-4" />
+              Download for Mac
+            </a>
+            <a
+              href="#"
+              className="text-sm font-medium text-foreground underline underline-offset-4 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:opacity-70 active:scale-95"
+            >
+              Recover a license
+            </a>
+          </div>
+        </SectionCard>
       </Reveal>
     </section>
   );
