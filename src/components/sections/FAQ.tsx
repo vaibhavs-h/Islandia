@@ -45,7 +45,7 @@ function FAQItem({ faq, index }: { faq: (typeof faqs)[number]; index: number }) 
           <span className="text-lg font-medium text-foreground">{faq.q}</span>
         </span>
         <span
-          className={`shrink-0 text-lg font-light leading-none text-foreground-muted transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          className={`shrink-0 text-lg font-light leading-none text-foreground-muted transition-transform duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] ${
             open ? "rotate-45" : ""
           }`}
         >
@@ -53,8 +53,8 @@ function FAQItem({ faq, index }: { faq: (typeof faqs)[number]; index: number }) 
         </span>
       </button>
       <div
-        className={`grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          open ? "grid-rows-[1fr] mt-3" : "grid-rows-[0fr]"
+        className={`grid transition-[grid-template-rows,margin-top] duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          open ? "grid-rows-[1fr] mt-3" : "grid-rows-[0fr] mt-0"
         }`}
       >
         <div className="overflow-hidden">
