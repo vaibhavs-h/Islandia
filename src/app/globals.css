@@ -67,7 +67,7 @@ body {
 @keyframes hero-enter {
   from {
     opacity: 0;
-    transform: translateY(28px);
+    transform: translateY(36px);
   }
   to {
     opacity: 1;
@@ -76,5 +76,42 @@ body {
 }
 
 .animate-hero-enter {
-  animation: hero-enter 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: hero-enter 1.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/*
+ * Grows the laurel branches bottom-up (base to tip) as scroll progress
+ * drives --laurel-reveal (0%-114%, see LAUREL_FADE_PCT in Hero.tsx) via
+ * the mask below. Color is a *separate* concern from the mask: the whole
+ * shape shares one color at any instant, and that shared color itself
+ * ramps light grey -> black as --laurel-reveal climbs - reaching solid
+ * black only at reveal=108.3% (95% of the way through the reveal's full
+ * 0-114% driven range, i.e. 95% of the animation, not 95% of a plain
+ * 0-100 scale) so it keeps darkening through most of the growth instead
+ * of finishing early and sitting flat black for the remaining tail.
+ */
+.laurel-grow {
+  --laurel-reveal: 0%;
+}
+
+.laurel-leaf {
+  color: color-mix(
+    in srgb,
+    #8f8a84 calc(100% - min(var(--laurel-reveal) * 100 / 108.3, 100%)),
+    black min(var(--laurel-reveal) * 100 / 108.3, 100%)
+  );
+  -webkit-mask-image: linear-gradient(
+    to top,
+    black 0%,
+    black var(--laurel-reveal),
+    transparent var(--laurel-reveal),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to top,
+    black 0%,
+    black var(--laurel-reveal),
+    transparent var(--laurel-reveal),
+    transparent 100%
+  );
 }
