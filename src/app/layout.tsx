@@ -10,7 +10,7 @@ const caveat = Caveat({
 });
 
 export const metadata: Metadata = {
-  title: "Islandia — the Dynamic Island for your Mac",
+  title: "Islandia",
   description:
     "Live Now Playing with lyrics, AirPods battery, a file shelf, weather, and lock-screen media controls — always visible at the top of your screen.",
 };
