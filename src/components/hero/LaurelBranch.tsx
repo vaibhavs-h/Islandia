@@ -14,11 +14,10 @@ export default function LaurelBranch({
   return (
     <svg
       viewBox={flip ? "599 -1 295 690" : "-2 -1 295 690"}
-      fill="currentColor"
       className={className}
       aria-hidden="true"
     >
-      <path d={flip ? RIGHT_D : LEFT_D} />
+      <path d={flip ? RIGHT_D : LEFT_D} fill="currentColor" className="laurel-leaf" />
     </svg>
   );
 }
