@@ -2,8 +2,15 @@
 
 import { useState } from "react";
 import SkyToggle from "@/components/ui/sky-toggle";
+import Reveal from "@/components/site/Reveal";
 
-export default function SkyFeatureCard() {
+export default function SkyFeatureCard({
+  className,
+  baseDelay = 0,
+}: {
+  className?: string;
+  baseDelay?: number;
+}) {
   const [night, setNight] = useState(false);
 
   return (
@@ -12,14 +19,16 @@ export default function SkyFeatureCard() {
         night
           ? "bg-foreground text-background hover:bg-background-soft hover:text-foreground"
           : "bg-background-soft text-foreground hover:bg-foreground hover:text-background"
-      }`}
+      } ${className ?? ""}`}
     >
-      <h3 className="font-display text-lg font-semibold tracking-tight">
-        Looks right, <span className="italic">day or night.</span>
-      </h3>
-      <div className="flex justify-center">
+      <Reveal delay={baseDelay}>
+        <h3 className="font-display text-lg font-semibold tracking-tight">
+          Looks right, <span className="italic">day or night.</span>
+        </h3>
+      </Reveal>
+      <Reveal delay={baseDelay + 0.1} className="flex justify-center">
         <SkyToggle night={night} onToggle={() => setNight((v) => !v)} />
-      </div>
+      </Reveal>
     </div>
   );
 }

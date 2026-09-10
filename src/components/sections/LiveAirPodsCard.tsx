@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { AirPodsMaxIcon, AirPodsProIcon } from "@/components/site/AirPodsIcons";
+import Reveal from "@/components/site/Reveal";
 
 const RING_RADIUS = 8;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -31,7 +32,13 @@ function cubicBezierEase(x1: number, y1: number, x2: number, y2: number) {
 
 const ease = cubicBezierEase(0.22, 0.61, 0.2, 1);
 
-export default function LiveAirPodsCard() {
+export default function LiveAirPodsCard({
+  className,
+  baseDelay = 0,
+}: {
+  className?: string;
+  baseDelay?: number;
+}) {
   const [num, setNum] = useState(NUM_LO);
   const frameRef = useRef<number | null>(null);
   const numRef = useRef(NUM_LO);
@@ -52,20 +59,24 @@ export default function LiveAirPodsCard() {
 
   return (
     <div
-      className="group flex h-full flex-col gap-8 rounded-3xl bg-background-soft p-7 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:shadow-[0_16px_40px_-12px_rgba(29,29,31,0.18)]"
+      className={`group flex h-full flex-col gap-8 rounded-3xl bg-background-soft p-7 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:shadow-[0_16px_40px_-12px_rgba(29,29,31,0.18)] ${className ?? ""}`}
       onMouseEnter={() => animateTo(NUM_HI)}
       onMouseLeave={() => animateTo(NUM_LO)}
     >
-      <div>
-        <h3 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-          Every pair, <span className="italic">always visible.</span>
-        </h3>
-        <p className="mt-3 text-sm leading-relaxed text-foreground-muted">
-          Battery and volume, the moment they connect.
-        </p>
+      <div className="flex flex-col gap-3">
+        <Reveal delay={baseDelay}>
+          <h3 className="font-display text-lg font-semibold tracking-tight text-foreground">
+            Every pair, <span className="italic">always visible.</span>
+          </h3>
+        </Reveal>
+        <Reveal delay={baseDelay + 0.1}>
+          <p className="text-sm leading-relaxed text-foreground-muted">
+            Battery and volume, the moment they connect.
+          </p>
+        </Reveal>
       </div>
 
-      <div className="mt-auto flex flex-col gap-3">
+      <Reveal delay={baseDelay + 0.2} className="mt-auto flex flex-col gap-3">
         <div className="flex items-center justify-between rounded-full bg-black px-5 py-3.5 text-white transition-transform duration-[550ms] ease-[cubic-bezier(.22,.61,.2,1)] group-hover:-translate-x-1.5 group-hover:scale-[1.03]">
           <div className="flex items-center gap-3">
             <AirPodsProIcon className="h-6 w-6 text-white" />
@@ -107,7 +118,7 @@ export default function LiveAirPodsCard() {
             <span className="w-6 text-right text-xs text-white/70">{num}</span>
           </div>
         </div>
-      </div>
+      </Reveal>
     </div>
   );
 }
