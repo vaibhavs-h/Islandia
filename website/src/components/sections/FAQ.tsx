@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Reveal from "@/components/site/Reveal";
 import SectionCard from "@/components/site/SectionCard";
 
@@ -24,6 +27,46 @@ const faqs = [
   },
 ];
 
+function FAQItem({ faq, index }: { faq: (typeof faqs)[number]; index: number }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="py-6">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full cursor-pointer items-start justify-between gap-6 text-left"
+      >
+        <span className="flex items-baseline gap-4">
+          <span className="font-mono text-xs text-foreground-muted">
+            {String(index + 1).padStart(2, "0")}
+          </span>
+          <span className="text-lg font-medium text-foreground">{faq.q}</span>
+        </span>
+        <span
+          className={`shrink-0 text-lg font-light leading-none text-foreground-muted transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+            open ? "rotate-45" : ""
+          }`}
+        >
+          +
+        </span>
+      </button>
+      <div
+        className={`grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          open ? "grid-rows-[1fr] mt-3" : "grid-rows-[0fr]"
+        }`}
+      >
+        <div className="overflow-hidden">
+          <p className="pl-8 text-base leading-relaxed text-foreground-muted">
+            {faq.a}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FAQ() {
   return (
     <section id="faq" className="px-6 py-14 sm:px-10">
@@ -38,26 +81,13 @@ export default function FAQ() {
         </SectionCard>
       </Reveal>
 
-      <Reveal className="mx-auto mt-16 max-w-2xl divide-y divide-foreground/10">
+      <div className="mx-auto mt-16 max-w-2xl divide-y divide-foreground/10">
         {faqs.map((faq, i) => (
-          <details key={faq.q} className="group py-6">
-            <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-left">
-              <span className="flex items-baseline gap-4">
-                <span className="font-mono text-xs text-foreground-muted">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <span className="font-medium text-foreground">{faq.q}</span>
-              </span>
-              <span className="shrink-0 text-lg font-light leading-none text-foreground-muted transition-transform group-open:rotate-45">
-                +
-              </span>
-            </summary>
-            <p className="mt-3 pl-8 text-sm leading-relaxed text-foreground-muted">
-              {faq.a}
-            </p>
-          </details>
+          <Reveal key={faq.q} delay={i * 0.05}>
+            <FAQItem faq={faq} index={i} />
+          </Reveal>
         ))}
-      </Reveal>
+      </div>
     </section>
   );
 }
