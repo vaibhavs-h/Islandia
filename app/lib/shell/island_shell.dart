@@ -21,6 +21,8 @@ import '../providers/now_playing_provider.dart';
 import '../providers/now_playing_visibility_gate.dart';
 import '../providers/screen_capture_activity.dart';
 import '../providers/screen_capture_activity_provider.dart';
+import '../providers/wifi_connection_activity.dart';
+import '../providers/wifi_connection_provider.dart';
 import 'island_window_channel.dart';
 import 'motion.dart';
 import 'pill_geometry.dart';
@@ -120,6 +122,7 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
   StreamSubscription<bool>? _microphoneActivitySubscription;
   StreamSubscription<bool>? _cameraActivitySubscription;
   StreamSubscription<bool>? _screenCaptureActivitySubscription;
+  StreamSubscription<WiFiConnectionEvent>? _wifiConnectionSubscription;
   NowPlayingSnapshot? _lastNowPlaying;
   AudioRouteSnapshot? _lastAudioRoute;
 
@@ -193,6 +196,7 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
     _microphoneActivitySubscription?.cancel();
     _cameraActivitySubscription?.cancel();
     _screenCaptureActivitySubscription?.cancel();
+    _wifiConnectionSubscription?.cancel();
     super.dispose();
   }
 
@@ -254,6 +258,12 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
     _microphoneActivitySubscription = MicrophoneActivityProvider.updates.listen(_microphoneIndicator.handle);
     _cameraActivitySubscription = CameraActivityProvider.updates.listen(_cameraIndicator.handle);
     _screenCaptureActivitySubscription = ScreenCaptureActivityProvider.updates.listen(_screenCaptureIndicator.handle);
+
+    // Same discrete-event shape as BluetoothClassicProvider above — native
+    // already hands over distinct join/leave events, nothing to diff here.
+    _wifiConnectionSubscription = WiFiConnectionProvider.updates.listen((event) {
+      _stack.register(buildWiFiConnectionActivity(networkName: event.name, connected: event.connected));
+    });
 
     if (!mounted) return;
     setState(() => _screen = screen);

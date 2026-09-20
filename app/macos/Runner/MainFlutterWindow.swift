@@ -18,6 +18,7 @@ class MainFlutterWindow: NSWindow {
   private let microphoneActivityChannel = MicrophoneActivityChannel()
   private let cameraActivityChannel = CameraActivityChannel()
   private let screenCaptureActivityChannel = ScreenCaptureActivityChannel()
+  private let wifiConnectionChannel = WiFiConnectionChannel()
 
   override func awakeFromNib() {
     flutterViewController = FlutterViewController()
@@ -41,6 +42,7 @@ class MainFlutterWindow: NSWindow {
     microphoneActivityChannel.register(on: flutterViewController)
     cameraActivityChannel.register(on: flutterViewController)
     screenCaptureActivityChannel.register(on: flutterViewController)
+    wifiConnectionChannel.register(on: flutterViewController)
 
     configureAsIslandPanel()
 
