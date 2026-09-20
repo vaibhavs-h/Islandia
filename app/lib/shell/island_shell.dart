@@ -14,6 +14,9 @@ import '../providers/bluetooth_battery_provider.dart';
 import '../providers/bluetooth_classic_provider.dart';
 import '../providers/camera_activity_activity.dart';
 import '../providers/camera_activity_provider.dart';
+import '../providers/clock_alarm_activity.dart';
+import '../providers/clock_awareness_activity.dart';
+import '../providers/clock_awareness_provider.dart';
 import '../providers/microphone_activity_activity.dart';
 import '../providers/microphone_activity_provider.dart';
 import '../providers/now_playing_activity.dart';
@@ -70,10 +73,11 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
   );
 
   /// 0 when nothing but the battery fallback is showing (the dots' normal,
-  /// vertically-centered home), 1 whenever anything else — Now Playing,
-  /// even one of the privacy activities' own prominent banners — has taken
-  /// the top slot instead, which is exactly when a centered dot would sit
-  /// on top of that content's own elements. See _privacyDots().
+  /// vertically-centered home), 1 whenever anything else — Now Playing, a
+  /// Bluetooth alert, even one of the privacy activities' own prominent
+  /// banners — has taken the top slot instead, which is exactly when a
+  /// centered dot would sit on top of that content's own elements. See
+  /// _privacyDots().
   late final AnimationController _dotsCompactTransition = AnimationController(
     vsync: this,
     // Deliberately slower than the content cross-fade — explicitly asked
@@ -122,6 +126,45 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
   StreamSubscription<bool>? _microphoneActivitySubscription;
   StreamSubscription<bool>? _cameraActivitySubscription;
   StreamSubscription<bool>? _screenCaptureActivitySubscription;
+  StreamSubscription<ClockAwarenessSnapshot>? _clockAwarenessSubscription;
+  /// Null until the first snapshot decides it — see
+  /// _refreshClockAwarenessActivity for why this (not just the id string
+  /// alone) is what decides whether a fresh registration counts as a real
+  /// view change.
+  ClockAwarenessView? _lastClockAwarenessView;
+  int _clockAwarenessViewGeneration = 0;
+  /// Null until the first snapshot arrives — same guard shape as
+  /// [_lastBluetoothDeviceNames]: the very first snapshot is Clock's own
+  /// already-existing alarms, not a batch that all "just got created."
+  /// Keyed on the full alarm, not just its id, so a deleted alarm's own
+  /// title/time can still be reported (its own snapshot no longer has
+  /// them; the previous one does).
+  Map<String, ClockAlarm>? _lastAlarmsById;
+
+  /// Set the instant the island's own Pause button is tapped (see
+  /// buildClockAwarenessActivity's onTimerPauseRequested), cleared on
+  /// Resume, on Cancel, and unconditionally in _collapse() — i.e., it
+  /// lives exactly as long as "the user paused a timer via this button and
+  /// hasn't collapsed the view since." This is deliberately *not* a data
+  /// override — an earlier version remembered the paused timer's own
+  /// frozen state and spliced it back into every snapshot, which
+  /// (confirmed live, three separate real bugs from one test sequence)
+  /// could fight the app's own real stopwatch/timer priority rules and,
+  /// worst of all, had no path to ever clear itself while the view stayed
+  /// continuously expanded — it got permanently stuck, immune even to a
+  /// real Cancel from Clock itself, surviving until a full app restart.
+  ///
+  /// A second version tried a short, fixed 2-second expiry instead of
+  /// tying this to the expand/collapse lifecycle — also wrong, confirmed
+  /// live by screen recording: explicitly requested behavior is that
+  /// pausing a timer holds *that timer's own view* on screen for as long
+  /// as the expanded card stays open, not merely for a couple of seconds
+  /// before a stopwatch is allowed to reclaim the slot on its own real
+  /// merits. _refreshClockAwarenessActivity uses this flag to override
+  /// *what view shows* while it's true (see its own doc comment) — not
+  /// just whether the widget's own last frame survives, which is
+  /// _TimerExpanded's own separate, local concern (see its doc comment).
+  bool _timerHeldByPause = false;
   StreamSubscription<WiFiConnectionEvent>? _wifiConnectionSubscription;
   NowPlayingSnapshot? _lastNowPlaying;
   AudioRouteSnapshot? _lastAudioRoute;
@@ -196,6 +239,7 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
     _microphoneActivitySubscription?.cancel();
     _cameraActivitySubscription?.cancel();
     _screenCaptureActivitySubscription?.cancel();
+    _clockAwarenessSubscription?.cancel();
     _wifiConnectionSubscription?.cancel();
     super.dispose();
   }
@@ -259,6 +303,8 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
     _cameraActivitySubscription = CameraActivityProvider.updates.listen(_cameraIndicator.handle);
     _screenCaptureActivitySubscription = ScreenCaptureActivityProvider.updates.listen(_screenCaptureIndicator.handle);
 
+    _clockAwarenessSubscription = ClockAwarenessProvider.updates.listen(_refreshClockAwarenessActivity);
+
     // Same discrete-event shape as BluetoothClassicProvider above — native
     // already hands over distinct join/leave events, nothing to diff here.
     _wifiConnectionSubscription = WiFiConnectionProvider.updates.listen((event) {
@@ -298,6 +344,81 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
     }
   }
 
+  /// Diffs successive alarm-list snapshots into created/deleted/edited/
+  /// enabled/disabled alerts — same shape as
+  /// [_detectBluetoothConnectionChanges] above, for the same reason:
+  /// there's no native push for "an alarm was just created," only polled
+  /// snapshots of what currently exists (see
+  /// ClockPreferencesReader.alarms()'s own doc comment). An edit or a
+  /// toggle is its own case, not folded into created/deleted — confirmed
+  /// live that changing an existing alarm's time (or flipping its
+  /// enabled switch) keeps its own id unchanged, so either is invisible
+  /// to a plain id-set difference; only comparing the two alarms *with
+  /// the same id* field-by-field can catch either. The time-edit check is
+  /// scoped to hour/minute specifically (explicitly requested as "just
+  /// for time changes") — a title edit deliberately doesn't trigger it.
+  ///
+  /// The enabled/disabled check has one deliberate exclusion: a one-off
+  /// (non-repeating) alarm auto-disables itself the instant it actually
+  /// fires — confirmed live, MTAlarmEnabled flips straight from 1 to 0
+  /// right as it rings — which would otherwise look identical to the
+  /// user flipping the switch off themselves. [_looksLikeAutoDisable]
+  /// filters that out by checking whether the disable landed within a
+  /// minute of the alarm's own scheduled hour:minute — a real user
+  /// toggle essentially never coincides with that exact window, so this
+  /// is a safe (if not airtight) heuristic, not a guarantee.
+  ///
+  /// If more than one kind of change lands in the same poll tick, the
+  /// single shared alert slot picks one in this priority order —
+  /// deletion, then edit, then enabled/disabled, then creation — same
+  /// arbitrary-but-acceptable tiebreak shape Bluetooth's own version
+  /// already makes for a simultaneous connect+disconnect.
+  void _detectAlarmChanges(List<ClockAlarm> alarms) {
+    final currentById = {for (final alarm in alarms) alarm.id: alarm};
+    final previousById = _lastAlarmsById;
+    _lastAlarmsById = currentById;
+    if (previousById == null) return;
+
+    final deletedIds = previousById.keys.toSet().difference(currentById.keys.toSet());
+    if (deletedIds.isNotEmpty) {
+      _stack.register(buildAlarmAlertActivity(alarm: previousById[deletedIds.first]!, kind: AlarmChangeKind.deleted));
+      return;
+    }
+
+    final sharedIds = currentById.keys.toSet().intersection(previousById.keys.toSet());
+    for (final id in sharedIds) {
+      final before = previousById[id]!;
+      final after = currentById[id]!;
+      if (before.hour != after.hour || before.minute != after.minute) {
+        _stack.register(buildAlarmAlertActivity(alarm: after, kind: AlarmChangeKind.edited));
+        return;
+      }
+    }
+    for (final id in sharedIds) {
+      final before = previousById[id]!;
+      final after = currentById[id]!;
+      if (before.enabled == after.enabled) continue;
+      if (!after.enabled && _looksLikeAutoDisable(after)) continue;
+      _stack.register(buildAlarmAlertActivity(alarm: after, kind: after.enabled ? AlarmChangeKind.enabled : AlarmChangeKind.disabled));
+      return;
+    }
+
+    final createdIds = currentById.keys.toSet().difference(previousById.keys.toSet());
+    if (createdIds.isNotEmpty) {
+      _stack.register(buildAlarmAlertActivity(alarm: currentById[createdIds.first]!, kind: AlarmChangeKind.created));
+    }
+  }
+
+  /// Within a minute either side of the alarm's own scheduled time — see
+  /// [_detectAlarmChanges]'s own doc comment for why this specific window
+  /// (not "just disabled" alone) is what distinguishes Clock's own
+  /// post-fire auto-disable from the user actually flipping the switch.
+  static bool _looksLikeAutoDisable(ClockAlarm alarm) {
+    final now = DateTime.now();
+    final scheduledToday = DateTime(now.year, now.month, now.day, alarm.hour, alarm.minute);
+    return now.difference(scheduledToday).abs() <= const Duration(minutes: 1);
+  }
+
   /// Now Playing's registration is gated on [_lastNowPlaying] plus the
   /// paused-hide hysteresis below — audio-route updates just refresh what's
   /// already showing, they never cause Now Playing to appear or disappear
@@ -321,6 +442,93 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
       audioRoute: _lastAudioRoute,
       onControlPressed: _startAutoCollapseTimer,
     ));
+  }
+
+  /// Both the stopwatch and timer views share one activity id (see
+  /// buildClockAwarenessActivity) — a plain re-register on every 1Hz tick
+  /// would never bump _topIdGeneration (it only fires on an id *changing*,
+  /// see IslandShell.build), so the stopwatch→timer handback would hard-cut
+  /// instead of cross-fading. Suffixing the id with a generation counter,
+  /// bumped only when [selectClockAwarenessView] actually returns something
+  /// different from last time, gets the cross-fade for the one transition
+  /// that needs it without also fading on every ordinary countdown tick —
+  /// same fix as buildBluetoothConnectionActivity's own sequence number, for
+  /// the same reason.
+  void _refreshClockAwarenessActivity(ClockAwarenessSnapshot snapshot) {
+    _detectAlarmChanges(snapshot.alarms);
+
+    // A plain register/remove, not diffed against a remembered previous
+    // value the way _detectAlarmChanges is above — buildAlarmRingingActivity
+    // returns the exact same fixed-id Activity every call, so registering
+    // it again on every snapshot while still ringing is an idempotent
+    // update (ActivityStack.register replaces in place on a matching id),
+    // not a repeated arrival the way a fresh alarm-alert id would be.
+    if (snapshot.isScheduledAlarmRinging) {
+      _stack.register(buildAlarmRingingActivity());
+    } else {
+      _stack.remove('alarm-ringing');
+    }
+
+    final naturalView = selectClockAwarenessView(snapshot, _lastClockAwarenessView);
+
+    // A timer held by pause overrides the *view itself* — not just its
+    // widget's own rendering — against whatever selectClockAwarenessView
+    // would otherwise decide, including a real, different view winning on
+    // its own merits (a stopwatch legitimately becoming preferred once the
+    // paused timer drops out of its preempt window). Confirmed live twice
+    // (screen recordings caught both): an earlier version only
+    // intercepted the case where selectClockAwarenessView had *nothing*
+    // left to show at all — a stopwatch still running alongside the
+    // paused timer sailed right past that check, since "show the
+    // stopwatch instead" is a real, non-null decision, not the
+    // null-transition case that check was actually guarding. A second
+    // version fixed that but used a short fixed expiry instead of tying
+    // the hold to the expand/collapse lifecycle — also confirmed wrong:
+    // explicitly requested behavior is that pausing a timer holds its own
+    // view for as long as the expanded card stays open, full stop, not
+    // merely for a couple of seconds before a stopwatch can reclaim the
+    // slot.
+    final view = _timerHeldByPause ? ClockAwarenessView.timer : naturalView;
+
+    if (view == null) {
+      _lastClockAwarenessView = null;
+      _stack.remove('clock-awareness-$_clockAwarenessViewGeneration');
+      return;
+    }
+    if (view != _lastClockAwarenessView) {
+      _clockAwarenessViewGeneration++;
+    }
+    _lastClockAwarenessView = view;
+    _stack.register(
+      buildClockAwarenessActivity(
+        snapshot,
+        view,
+        generation: _clockAwarenessViewGeneration,
+        onTimerPauseRequested: _onTimerPauseRequested,
+        onTimerCancelRequested: _onTimerHoldReleased,
+        onTimerResumeRequested: _onTimerHoldReleased,
+      ),
+    );
+  }
+
+  /// Called the instant the island's own Pause button is tapped — see
+  /// _timerHeldByPause's own doc comment for what this flag actually means
+  /// and the two earlier, buggier designs it replaced.
+  void _onTimerPauseRequested() {
+    _timerHeldByPause = true;
+  }
+
+  /// Called the instant either Cancel or Resume is tapped while a timer is
+  /// held by an earlier pause — both end the hold the same way: a canceled
+  /// or resumed timer should compete for its view slot on its own real
+  /// merits again (or, for cancel, have no slot to compete for at all),
+  /// not stay artificially pinned by a pause that's no longer in effect.
+  /// Without this, canceling or resuming a held timer would keep forcing
+  /// the timer view to stay selected for as long as the expanded view
+  /// happened to remain open — not the old permanent-forever bug, but
+  /// still wrong.
+  void _onTimerHoldReleased() {
+    _timerHeldByPause = false;
   }
 
   void _onStackChanged() => setState(() {});
@@ -435,6 +643,13 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
     IslandWindowChannel.setInteractive(false);
     _focusNode.unfocus();
     _contentTransition.reverse();
+    // A timer held by pause only holds its view for as long as the
+    // expanded card stays open (see _timerHeldByPause's own doc comment,
+    // and buildClockAwarenessActivity's) — collapsing, for any reason, is
+    // the one thing that unconditionally ends the hold, letting whatever's
+    // actually true (a stopwatch, a different timer, nothing) show once
+    // this expands again.
+    _timerHeldByPause = false;
     setState(() => _state = LifecycleState.collapsing);
     _applyFrame(animated: true).then((_) {
       if (mounted) setState(() => _state = LifecycleState.collapsed);

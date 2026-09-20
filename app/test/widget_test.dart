@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -39,6 +40,57 @@ void main() {
       matchesSemantics(hint: 'Double tap to expand', hasTapAction: true, isFocusable: true, hasFocusAction: true),
     );
 
+    semantics.dispose();
+  });
+
+  testWidgets('hovering the expanded pill holds off auto-collapse; leaving resumes the 5s countdown', (
+    WidgetTester tester,
+  ) async {
+    _mockChannels();
+    final semantics = tester.ensureSemantics();
+
+    // The 'Double tap to expand' semantics *hint* (not label) is only
+    // present while collapsed/hover (see IslandShell.build's
+    // canExpandOnTap) — it disappears the instant the pill expands and
+    // comes back once it collapses again, making it the one clean
+    // observable signal for "is this still expanded" from outside the
+    // shell's own state. The pill itself keeps the same semantics label
+    // (the battery reading) whether expanded or not, so it's always
+    // findable this same way; only its hint property changes.
+    final pill = find.bySemanticsLabel(RegExp('Battery, 100 percent, Charged'));
+    bool isExpanded() => tester.getSemantics(pill).hint != 'Double tap to expand';
+
+    await tester.pumpWidget(const IslandiaApp());
+    await _pumpPastBootstrap(tester);
+    expect(isExpanded(), isFalse);
+
+    await tester.tap(pill);
+    await tester.pump();
+    expect(isExpanded(), isTrue);
+
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: tester.getCenter(pill));
+    await tester.pump();
+
+    // Past the normal 5s delay while the pointer never left — must still be
+    // expanded (a plain 5s Timer with nothing else watching this would have
+    // collapsed it here).
+    await tester.pump(const Duration(seconds: 6));
+    expect(isExpanded(), isTrue);
+
+    await gesture.moveTo(const Offset(-1, -1)); // off the pill entirely
+    await tester.pump();
+
+    // Not yet — leaving restarts a fresh 5s countdown, it doesn't collapse
+    // immediately.
+    await tester.pump(const Duration(seconds: 4));
+    expect(isExpanded(), isTrue);
+
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(isExpanded(), isFalse);
+
+    await gesture.removePointer();
     semantics.dispose();
   });
 }

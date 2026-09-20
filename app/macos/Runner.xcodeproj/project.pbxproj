@@ -21,17 +21,30 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		164EB1FE0267015B69D6C4DF /* WiFiConnectionChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7294696FD1599CBF804062AF /* WiFiConnectionChannel.swift */; };
+		1A5DD2A8F90256FDF15BEDD4 /* ClockAlarmRingingWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22E8F40AB4546ACDA202B8AD /* ClockAlarmRingingWatcher.swift */; };
 		331C80D8294CF71000263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C80D7294CF71000263BE5 /* RunnerTests.swift */; };
 		335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */ = {isa = PBXBuildFile; fileRef = 335BBD1A22A9A15E00E9071D /* GeneratedPluginRegistrant.swift */; };
 		33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC10F02044A3C60003C045 /* AppDelegate.swift */; };
 		33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F22044A3C60003C045 /* Assets.xcassets */; };
 		33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F42044A3C60003C045 /* MainMenu.xib */; };
 		33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC11122044BFA00003C045 /* MainFlutterWindow.swift */; };
+		3FC11384F4922FA59458143A /* WindowServerStatusIndicatorAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 869EB703F288D84E977884F3 /* WindowServerStatusIndicatorAdapter.swift */; };
+		42ED7A2153A29AE537199D6E /* ScreenCaptureActivityChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFDDA6707D87DD0F206E5C8 /* ScreenCaptureActivityChannel.swift */; };
+		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
+		8BA7834FE7BEE59CBD84AC8D /* ClockStopwatchController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E4F4B6DE7FB282ADC417593 /* ClockStopwatchController.swift */; };
+		964BD7533E46D21EDF0022E6 /* ClockUIController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F2F3FE16DF6BBB4E0DE2E1 /* ClockUIController.swift */; };
+		C89DBDAD20E5D5CCAB14DA75 /* ClockTimerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5792DD0D2A7F83C4E1362303 /* ClockTimerController.swift */; };
+		CBBC5CF9C4122454EA3228E1 /* ClockPreferencesReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D31CDEE132EB2C66F0409B5 /* ClockPreferencesReader.swift */; };
+		EA8E5CA8C0E89D2D415AA01B /* BluetoothClassicChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44327075CDB2C4C1B1C1220E /* BluetoothClassicChannel.swift */; };
+		EB727560386EACCA7EBA27EE /* ClockActivityChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD1BB38D0C55EE5DAEF4F154 /* ClockActivityChannel.swift */; };
 		ED1AAA0000000000000002 /* IslandWindowChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED1AAA0000000000000001 /* IslandWindowChannel.swift */; };
 		ED1AAA0000000000000004 /* BatteryStreamHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED1AAA0000000000000003 /* BatteryStreamHandler.swift */; };
 		ED1AAA0000000000000007 /* NowPlayingChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED1AAA0000000000000006 /* NowPlayingChannel.swift */; };
 		ED1AAA0000000000000009 /* AudioRouteChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED1AAA0000000000000008 /* AudioRouteChannel.swift */; };
-		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
+		ED1AAA000000000000000B /* BluetoothBatteryChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED1AAA000000000000000A /* BluetoothBatteryChannel.swift */; };
+		ED1AAA000000000000000D /* MicrophoneActivityChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED1AAA000000000000000C /* MicrophoneActivityChannel.swift */; };
+		ED1AAA000000000000000F /* CameraActivityChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED1AAA000000000000000E /* CameraActivityChannel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -65,29 +78,42 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		1D31CDEE132EB2C66F0409B5 /* ClockPreferencesReader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClockPreferencesReader.swift; sourceTree = "<group>"; };
+		22E8F40AB4546ACDA202B8AD /* ClockAlarmRingingWatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClockAlarmRingingWatcher.swift; sourceTree = "<group>"; };
 		331C80D5294CF71000263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		331C80D7294CF71000263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		333000ED22D3DE5D00554162 /* Warnings.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Warnings.xcconfig; sourceTree = "<group>"; };
 		335BBD1A22A9A15E00E9071D /* GeneratedPluginRegistrant.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GeneratedPluginRegistrant.swift; sourceTree = "<group>"; };
-		33CC10ED2044A3C60003C045 /* islandia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "islandia.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		33CC10ED2044A3C60003C045 /* islandia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = islandia.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		33CC10F02044A3C60003C045 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		33CC10F22044A3C60003C045 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = Runner/Assets.xcassets; sourceTree = "<group>"; };
 		33CC10F52044A3C60003C045 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		33CC10F72044A3C60003C045 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = Runner/Info.plist; sourceTree = "<group>"; };
 		33CC11122044BFA00003C045 /* MainFlutterWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainFlutterWindow.swift; sourceTree = "<group>"; };
-		ED1AAA0000000000000001 /* IslandWindowChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandWindowChannel.swift; sourceTree = "<group>"; };
-		ED1AAA0000000000000003 /* BatteryStreamHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryStreamHandler.swift; sourceTree = "<group>"; };
-		ED1AAA0000000000000006 /* NowPlayingChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingChannel.swift; sourceTree = "<group>"; };
-		ED1AAA0000000000000008 /* AudioRouteChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRouteChannel.swift; sourceTree = "<group>"; };
 		33CEB47222A05771004F2AC0 /* Flutter-Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Flutter-Debug.xcconfig"; sourceTree = "<group>"; };
 		33CEB47422A05771004F2AC0 /* Flutter-Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Flutter-Release.xcconfig"; sourceTree = "<group>"; };
 		33CEB47722A0578A004F2AC0 /* Flutter-Generated.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = "Flutter-Generated.xcconfig"; path = "ephemeral/Flutter-Generated.xcconfig"; sourceTree = "<group>"; };
 		33E51913231747F40026EE4D /* DebugProfile.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DebugProfile.entitlements; sourceTree = "<group>"; };
 		33E51914231749380026EE4D /* Release.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = Release.entitlements; sourceTree = "<group>"; };
 		33E5194F232828860026EE4D /* AppInfo.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AppInfo.xcconfig; sourceTree = "<group>"; };
+		44327075CDB2C4C1B1C1220E /* BluetoothClassicChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BluetoothClassicChannel.swift; sourceTree = "<group>"; };
+		5792DD0D2A7F83C4E1362303 /* ClockTimerController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClockTimerController.swift; sourceTree = "<group>"; };
+		6E4F4B6DE7FB282ADC417593 /* ClockStopwatchController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClockStopwatchController.swift; sourceTree = "<group>"; };
+		7294696FD1599CBF804062AF /* WiFiConnectionChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WiFiConnectionChannel.swift; sourceTree = "<group>"; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		869EB703F288D84E977884F3 /* WindowServerStatusIndicatorAdapter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowServerStatusIndicatorAdapter.swift; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		A7F2F3FE16DF6BBB4E0DE2E1 /* ClockUIController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClockUIController.swift; sourceTree = "<group>"; };
+		ED1AAA0000000000000001 /* IslandWindowChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandWindowChannel.swift; sourceTree = "<group>"; };
+		ED1AAA0000000000000003 /* BatteryStreamHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryStreamHandler.swift; sourceTree = "<group>"; };
+		ED1AAA0000000000000006 /* NowPlayingChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingChannel.swift; sourceTree = "<group>"; };
+		ED1AAA0000000000000008 /* AudioRouteChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRouteChannel.swift; sourceTree = "<group>"; };
+		ED1AAA000000000000000A /* BluetoothBatteryChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothBatteryChannel.swift; sourceTree = "<group>"; };
+		ED1AAA000000000000000C /* MicrophoneActivityChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicrophoneActivityChannel.swift; sourceTree = "<group>"; };
+		ED1AAA000000000000000E /* CameraActivityChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraActivityChannel.swift; sourceTree = "<group>"; };
+		FD1BB38D0C55EE5DAEF4F154 /* ClockActivityChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClockActivityChannel.swift; sourceTree = "<group>"; };
+		FDFDDA6707D87DD0F206E5C8 /* ScreenCaptureActivityChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenCaptureActivityChannel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -180,10 +206,23 @@
 				ED1AAA0000000000000003 /* BatteryStreamHandler.swift */,
 				ED1AAA0000000000000006 /* NowPlayingChannel.swift */,
 				ED1AAA0000000000000008 /* AudioRouteChannel.swift */,
+				ED1AAA000000000000000A /* BluetoothBatteryChannel.swift */,
+				ED1AAA000000000000000C /* MicrophoneActivityChannel.swift */,
+				ED1AAA000000000000000E /* CameraActivityChannel.swift */,
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
 				33E51914231749380026EE4D /* Release.entitlements */,
 				33CC11242044D66E0003C045 /* Resources */,
 				33BA886A226E78AF003329D5 /* Configs */,
+				44327075CDB2C4C1B1C1220E /* BluetoothClassicChannel.swift */,
+				FDFDDA6707D87DD0F206E5C8 /* ScreenCaptureActivityChannel.swift */,
+				869EB703F288D84E977884F3 /* WindowServerStatusIndicatorAdapter.swift */,
+				1D31CDEE132EB2C66F0409B5 /* ClockPreferencesReader.swift */,
+				22E8F40AB4546ACDA202B8AD /* ClockAlarmRingingWatcher.swift */,
+				FD1BB38D0C55EE5DAEF4F154 /* ClockActivityChannel.swift */,
+				7294696FD1599CBF804062AF /* WiFiConnectionChannel.swift */,
+				6E4F4B6DE7FB282ADC417593 /* ClockStopwatchController.swift */,
+				A7F2F3FE16DF6BBB4E0DE2E1 /* ClockUIController.swift */,
+				5792DD0D2A7F83C4E1362303 /* ClockTimerController.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -281,7 +320,7 @@
 			);
 			mainGroup = 33CC10E42044A3C60003C045;
 			packageReferences = (
-				781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage" */,
+				781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "FlutterGeneratedPluginSwiftPackage" */,
 			);
 			productRefGroup = 33CC10EE2044A3C60003C045 /* Products */;
 			projectDirPath = "";
@@ -314,21 +353,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		ED1AAA0000000000000005 /* Copy MediaRemoteAdapter */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "Copy MediaRemoteAdapter";
-			outputPaths = (
-				"$(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/Resources/MediaRemoteAdapter/mediaremote-adapter.pl",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# Vendored, not linked against (see NowPlayingAdapter.swift) — the perl\n# binary loads this dynamically at runtime, so it only needs to be a plain\n# resource, never an embedded/linked framework.\nDEST=\"${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/Resources/MediaRemoteAdapter\"\nmkdir -p \"$DEST\"\nrsync -a --delete \"${SRCROOT}/Runner/Resources/MediaRemoteAdapter/\" \"$DEST/\"\n";
-		};
 		3399D490228B24CF009A79C7 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -367,6 +391,21 @@
 			shellPath = /bin/sh;
 			shellScript = "\"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh && touch Flutter/ephemeral/tripwire";
 		};
+		ED1AAA0000000000000005 /* Copy MediaRemoteAdapter */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Copy MediaRemoteAdapter";
+			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/Resources/MediaRemoteAdapter/mediaremote-adapter.pl",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Vendored, not linked against (see NowPlayingAdapter.swift) — the perl\n# binary loads this dynamically at runtime, so it only needs to be a plain\n# resource, never an embedded/linked framework.\nDEST=\"${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/Resources/MediaRemoteAdapter\"\nmkdir -p \"$DEST\"\nrsync -a --delete \"${SRCROOT}/Runner/Resources/MediaRemoteAdapter/\" \"$DEST/\"\n";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -387,8 +426,21 @@
 				ED1AAA0000000000000004 /* BatteryStreamHandler.swift in Sources */,
 				ED1AAA0000000000000007 /* NowPlayingChannel.swift in Sources */,
 				ED1AAA0000000000000009 /* AudioRouteChannel.swift in Sources */,
+				ED1AAA000000000000000B /* BluetoothBatteryChannel.swift in Sources */,
+				ED1AAA000000000000000D /* MicrophoneActivityChannel.swift in Sources */,
+				ED1AAA000000000000000F /* CameraActivityChannel.swift in Sources */,
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
+				EA8E5CA8C0E89D2D415AA01B /* BluetoothClassicChannel.swift in Sources */,
+				42ED7A2153A29AE537199D6E /* ScreenCaptureActivityChannel.swift in Sources */,
+				3FC11384F4922FA59458143A /* WindowServerStatusIndicatorAdapter.swift in Sources */,
+				CBBC5CF9C4122454EA3228E1 /* ClockPreferencesReader.swift in Sources */,
+				1A5DD2A8F90256FDF15BEDD4 /* ClockAlarmRingingWatcher.swift in Sources */,
+				EB727560386EACCA7EBA27EE /* ClockActivityChannel.swift in Sources */,
+				164EB1FE0267015B69D6C4DF /* WiFiConnectionChannel.swift in Sources */,
+				8BA7834FE7BEE59CBD84AC8D /* ClockStopwatchController.swift in Sources */,
+				964BD7533E46D21EDF0022E6 /* ClockUIController.swift in Sources */,
+				C89DBDAD20E5D5CCAB14DA75 /* ClockTimerController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -744,7 +796,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage" */ = {
+		781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "FlutterGeneratedPluginSwiftPackage" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage;
 		};
