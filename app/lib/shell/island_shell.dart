@@ -4,11 +4,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../demo/demo_activities.dart';
 import '../engine/activity.dart';
 import '../engine/activity_stack.dart';
-import '../features/timer/timer_activity.dart';
-import '../features/timer/timer_controller.dart';
 import '../providers/audio_route_provider.dart';
 import '../providers/battery_activity.dart';
 import '../providers/battery_provider.dart';
@@ -62,7 +59,6 @@ class _IslandShellState extends State<IslandShell> with SingleTickerProviderStat
   StreamSubscription<BatterySnapshot>? _batterySubscription;
   StreamSubscription<NowPlayingSnapshot?>? _nowPlayingSubscription;
   StreamSubscription<AudioRouteSnapshot?>? _audioRouteSubscription;
-  TimerController? _timerController;
   NowPlayingSnapshot? _lastNowPlaying;
   AudioRouteSnapshot? _lastAudioRoute;
 
@@ -107,7 +103,6 @@ class _IslandShellState extends State<IslandShell> with SingleTickerProviderStat
     _batterySubscription?.cancel();
     _nowPlayingSubscription?.cancel();
     _audioRouteSubscription?.cancel();
-    _timerController?.dispose();
     super.dispose();
   }
 
@@ -133,11 +128,7 @@ class _IslandShellState extends State<IslandShell> with SingleTickerProviderStat
     });
 
     _batterySubscription = BatteryProvider.updates.listen(
-      (snapshot) => _stack.register(buildBatteryActivity(
-        snapshot,
-        onSimulateCall: _simulateIncomingCall,
-        onStartTimer: _startTimer,
-      )),
+      (snapshot) => _stack.register(buildBatteryActivity(snapshot)),
     );
 
     if (!mounted) return;
@@ -171,59 +162,6 @@ class _IslandShellState extends State<IslandShell> with SingleTickerProviderStat
   }
 
   void _onStackChanged() => setState(() {});
-
-  void _simulateIncomingCall() {
-    _autoCollapseTimer?.cancel();
-    _stack.register(buildIncomingCallDemoActivity(onResolve: _resolveIncomingCall));
-    setState(() => _state = LifecycleState.interactive);
-    IslandWindowChannel.setInteractive(true);
-    _focusNode.requestFocus();
-    // A P0/P1 activity "renders immediately, regardless of stack depth"
-    // (§03) — snapped to full opacity, not faded in, since this is an
-    // interruption, not a leisurely reveal. If already expanded this is a
-    // no-op; if collapsed, content is instantly there while the box still
-    // animates its resize (unchanged, existing behavior).
-    _contentTransition.value = 1.0;
-    _applyFrame(animated: true);
-  }
-
-  void _resolveIncomingCall() {
-    _stack.remove('fake-call-demo');
-    // Whatever's now on top (the ambient activity, unchanged since it was
-    // suspended) is what renders next — nothing was torn down to get here.
-    // Stays interactive/focused: expanded already keeps keyboard shortcuts
-    // (space, media keys) live for whatever's showing now.
-    setState(() => _state = LifecycleState.expanded);
-    _startAutoCollapseTimer();
-    _applyFrame(animated: true);
-  }
-
-  void _startTimer() {
-    _timerController?.dispose();
-    final controller = TimerController(const Duration(minutes: 1));
-    _timerController = controller;
-    controller.addListener(() {
-      if (controller.isComplete) _handleTimerComplete(controller);
-    });
-    _stack.register(buildTimerActivity(controller: controller, onCancel: _cancelTimer));
-  }
-
-  void _cancelTimer() {
-    _stack.remove('timer');
-    _timerController?.dispose();
-    _timerController = null;
-    _startAutoCollapseTimer(); // cancelling is itself a relevant interaction
-  }
-
-  void _handleTimerComplete(TimerController controller) {
-    // Same controller instance throughout — completion is a transition in
-    // what's registered, not a teardown-and-recreate.
-    if (_timerController != controller) return;
-    _stack.remove('timer');
-    _stack.register(buildTimerCompleteActivity());
-    controller.dispose();
-    _timerController = null;
-  }
 
   void _handleScreenChange(NotchGeometry screen) {
     setState(() => _screen = screen);
