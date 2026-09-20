@@ -9,12 +9,19 @@ import '../engine/activity_stack.dart';
 import '../providers/audio_route_provider.dart';
 import '../providers/battery_activity.dart';
 import '../providers/battery_provider.dart';
+import '../providers/camera_activity_activity.dart';
+import '../providers/camera_activity_provider.dart';
+import '../providers/microphone_activity_activity.dart';
+import '../providers/microphone_activity_provider.dart';
 import '../providers/now_playing_activity.dart';
 import '../providers/now_playing_provider.dart';
 import '../providers/now_playing_visibility_gate.dart';
+import '../providers/screen_capture_activity.dart';
+import '../providers/screen_capture_activity_provider.dart';
 import 'island_window_channel.dart';
 import 'motion.dart';
 import 'pill_geometry.dart';
+import 'privacy_indicator.dart';
 
 /// The Island itself: one collapsed↔hover↔expanded↔interactive↔collapse
 /// state machine (§00), rendering whatever the Activity Stack's top entry
@@ -27,16 +34,20 @@ class IslandShell extends StatefulWidget {
   State<IslandShell> createState() => _IslandShellState();
 }
 
-class _IslandShellState extends State<IslandShell> with SingleTickerProviderStateMixin {
+class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin {
   static const Size _collapsedSize = Size(253, 41);
-  static const Size _expandedSize = Size(360, 140);
+  // Now Playing's dense case (title + artist + audio route + controls, all
+  // tightened as far as they comfortably go) needs 134 of this — a few px
+  // of margin, not shaved down to exactly that, since real content varies
+  // slightly from the one snapshot this was measured against.
+  static const Size _expandedSize = Size(360, 136);
 
   static const Duration _autoCollapseDelay = Duration(seconds: 5);
 
   final ActivityStack _stack = ActivityStack();
   final FocusNode _focusNode = FocusNode(debugLabel: 'IslandShell');
   late final NowPlayingVisibilityGate _nowPlayingVisibility = NowPlayingVisibilityGate(
-    hideAfterPaused: const Duration(minutes: 1),
+    hideAfterPaused: const Duration(seconds: 15),
     onHide: _refreshNowPlayingActivity,
   );
 
@@ -53,12 +64,52 @@ class _IslandShellState extends State<IslandShell> with SingleTickerProviderStat
     duration: IslandMotion.expansionDuration,
   );
 
+  /// 0 when nothing but the battery fallback is showing (the dots' normal,
+  /// vertically-centered home), 1 whenever anything else — Now Playing,
+  /// even one of the privacy activities' own prominent banners — has taken
+  /// the top slot instead, which is exactly when a centered dot would sit
+  /// on top of that content's own elements. See _privacyDots().
+  late final AnimationController _dotsCompactTransition = AnimationController(
+    vsync: this,
+    // Deliberately slower than the content cross-fade — explicitly asked
+    // for as a slow, smooth shift, not something snappy enough to draw the
+    // eye on its own.
+    duration: const Duration(milliseconds: 500),
+  );
+
+  // Mic and camera both use the shared prominent-then-dot behavior (see
+  // PrivacyIndicatorController) — each owns its own animation clock and
+  // Activity Stack lifecycle, positioned side by side in build() below so
+  // both dots can be visible at once without overlapping.
+  late final PrivacyIndicatorController _microphoneIndicator = PrivacyIndicatorController(
+    activityId: 'microphone-activity',
+    buildActivity: buildMicrophoneActivity,
+    stack: _stack,
+    vsync: this,
+  );
+  late final PrivacyIndicatorController _cameraIndicator = PrivacyIndicatorController(
+    activityId: 'camera-activity',
+    buildActivity: buildCameraActivity,
+    stack: _stack,
+    vsync: this,
+  );
+  late final PrivacyIndicatorController _screenCaptureIndicator = PrivacyIndicatorController(
+    activityId: 'screen-capture-activity',
+    buildActivity: buildScreenCaptureActivity,
+    stack: _stack,
+    vsync: this,
+  );
+
   NotchGeometry? _screen;
   LifecycleState _state = LifecycleState.collapsed;
   Timer? _autoCollapseTimer;
+  bool _isHovering = false;
   StreamSubscription<BatterySnapshot>? _batterySubscription;
   StreamSubscription<NowPlayingSnapshot?>? _nowPlayingSubscription;
   StreamSubscription<AudioRouteSnapshot?>? _audioRouteSubscription;
+  StreamSubscription<bool>? _microphoneActivitySubscription;
+  StreamSubscription<bool>? _cameraActivitySubscription;
+  StreamSubscription<bool>? _screenCaptureActivitySubscription;
   NowPlayingSnapshot? _lastNowPlaying;
   AudioRouteSnapshot? _lastAudioRoute;
 
@@ -71,6 +122,26 @@ class _IslandShellState extends State<IslandShell> with SingleTickerProviderStat
   // expanded/call size so the fading-out overlay keeps its correct canvas
   // until the fade (not just the state flag) actually finishes.
   Size _lastExpandedContentSize = _expandedSize;
+
+  /// AnimatedSwitcher keys its transitioning children on the top activity's
+  /// id (see _crossFadedContent) — but a `Timer`-driven activity that
+  /// appears and disappears fast enough (a screenshot's screen-capture blip
+  /// added/removed ~20ms apart, say) can make the *same* id reappear while
+  /// the previous instance of that same id is still mid-exit from an earlier
+  /// transition. AnimatedSwitcher ends up with two entries carrying the same
+  /// key — "Duplicate keys found" — since it doesn't expect a key it's
+  /// currently animating out to be handed back to it as a new child. Tagging
+  /// each genuine identity change with an incrementing generation makes
+  /// every entry's key unique regardless of how fast the same id cycles
+  /// through, so there's never a collision to crash on.
+  String? _lastTopId;
+  int _topIdGeneration = 0;
+
+  /// Starts true to match _dotsCompactTransition's own starting value (0,
+  /// i.e. "home") — the battery fallback really is what's showing before
+  /// anything else has ever registered, so there's nothing to animate on
+  /// the very first build.
+  bool _lastIsHomeState = true;
 
   @override
   void initState() {
@@ -98,11 +169,18 @@ class _IslandShellState extends State<IslandShell> with SingleTickerProviderStat
     NowPlayingProvider.setMediaKeyHandler(null);
     _focusNode.dispose();
     _contentTransition.dispose();
+    _dotsCompactTransition.dispose();
+    _microphoneIndicator.dispose();
+    _cameraIndicator.dispose();
+    _screenCaptureIndicator.dispose();
     _autoCollapseTimer?.cancel();
     _nowPlayingVisibility.dispose();
     _batterySubscription?.cancel();
     _nowPlayingSubscription?.cancel();
     _audioRouteSubscription?.cancel();
+    _microphoneActivitySubscription?.cancel();
+    _cameraActivitySubscription?.cancel();
+    _screenCaptureActivitySubscription?.cancel();
     super.dispose();
   }
 
@@ -130,6 +208,10 @@ class _IslandShellState extends State<IslandShell> with SingleTickerProviderStat
     _batterySubscription = BatteryProvider.updates.listen(
       (snapshot) => _stack.register(buildBatteryActivity(snapshot)),
     );
+
+    _microphoneActivitySubscription = MicrophoneActivityProvider.updates.listen(_microphoneIndicator.handle);
+    _cameraActivitySubscription = CameraActivityProvider.updates.listen(_cameraIndicator.handle);
+    _screenCaptureActivitySubscription = ScreenCaptureActivityProvider.updates.listen(_screenCaptureIndicator.handle);
 
     if (!mounted) return;
     setState(() => _screen = screen);
@@ -170,17 +252,26 @@ class _IslandShellState extends State<IslandShell> with SingleTickerProviderStat
     _applyFrame(animated: false);
   }
 
-  // Hover is cosmetic only here — a mouse-over affordance, not a trigger.
-  // Expansion happens on click; see _handleTap.
+  // While collapsed, hover is cosmetic only — a mouse-over affordance, not
+  // a trigger; expansion happens on click (see _handleTap). While expanded,
+  // hover instead holds off the auto-collapse timer entirely (see
+  // _startAutoCollapseTimer) for as long as the pointer stays over the
+  // pill, so reading a longer countdown or scanning several lap rows never
+  // gets cut off mid-read; leaving resumes the normal 5s countdown fresh,
+  // same as any other "still relevant" interaction already does.
   void _handleHoverEnter() {
+    _isHovering = true;
     if (_state == LifecycleState.collapsed) {
       setState(() => _state = LifecycleState.hover);
     }
   }
 
   void _handleHoverExit() {
+    _isHovering = false;
     if (_state == LifecycleState.hover) {
       setState(() => _state = LifecycleState.collapsed);
+    } else if (_state == LifecycleState.expanded) {
+      _startAutoCollapseTimer();
     }
   }
 
@@ -210,10 +301,22 @@ class _IslandShellState extends State<IslandShell> with SingleTickerProviderStat
   /// (a playback control, cancelling a timer, a media key) — resets the
   /// auto-collapse clock, same as freshly expanding does. An irrelevant key
   /// (any regular letter) or a media key press while collapsed does not.
+  ///
+  /// If the pointer is still over the pill when this fires, collapsing is
+  /// deferred rather than skipped outright — _handleHoverExit is what
+  /// actually restarts a fresh countdown once the pointer leaves, but a
+  /// short re-check here (rather than relying solely on that) means a
+  /// timer already in flight when hovering begins still resolves itself
+  /// correctly with nothing else needing to reschedule it in the meantime.
   void _startAutoCollapseTimer() {
     _autoCollapseTimer?.cancel();
     _autoCollapseTimer = Timer(_autoCollapseDelay, () {
-      if (_state == LifecycleState.expanded) _collapse();
+      if (_state != LifecycleState.expanded) return;
+      if (_isHovering) {
+        _startAutoCollapseTimer();
+        return;
+      }
+      _collapse();
     });
   }
 
@@ -287,34 +390,187 @@ class _IslandShellState extends State<IslandShell> with SingleTickerProviderStat
     );
   }
 
-  /// A generic (not Now-Playing-specific) cross-fade for every activity:
-  /// collapsed content fades out while expanded content fades in, both
-  /// overlaid in a Stack, so elements exclusive to one side ease in/out
-  /// instead of the old behavior — expandedBuilder's full layout rendering
-  /// at full opacity the instant you tap, with only the growing clip mask
-  /// gradually *uncovering* already-finished content. Not a true
-  /// shared-element morph (the artwork doesn't slide/grow from its
-  /// collapsed position to its expanded one — that would need each
-  /// activity's content rewritten as one Stack with lerped Positioned
-  /// geometry, a bigger follow-up), but it replaces "sudden appearance"
-  /// with an actual transition.
+  /// A generic (not Now-Playing-specific) cross-fade for every activity, on
+  /// two independent axes:
+  ///  - collapsed↔expanded of the *same* activity, driven by [t]
+  ///    (unchanged from before — elements exclusive to one side ease in/out
+  ///    instead of expandedBuilder's full layout rendering at full opacity
+  ///    the instant you tap, with only the growing clip mask gradually
+  ///    *uncovering* already-finished content).
+  ///  - one activity replacing another *while staying in the same state*
+  ///    (Now Playing stopping and battery resuming its place, both
+  ///    collapsed) — previously an instant swap, since nothing was watching
+  ///    for the top activity's *identity* changing, only its lifecycle
+  ///    state. AnimatedSwitcher, keyed on [top.id], fades that too.
+  /// Not a true shared-element morph (the artwork doesn't slide/grow from
+  /// its collapsed position to its expanded one, and swapping activities
+  /// doesn't slide old content out while new content slides in — both would
+  /// need every activity's content rewritten as one Stack with lerped
+  /// Positioned geometry, a bigger follow-up), but it replaces every
+  /// "sudden appearance" in the shell with an actual transition.
   Widget _crossFadedContent(BuildContext context, Activity top, double t, Size contentSize) {
     final showCollapsed = t < 1.0;
     final showExpanded = t > 0.0;
+    // See _topIdGeneration's doc comment — this, not top.id alone, is what
+    // AnimatedSwitcher below keys its children on.
+    final entryKey = ValueKey('${top.id}#$_topIdGeneration');
     return Stack(
       alignment: Alignment.topCenter,
       children: [
         if (showCollapsed)
           Opacity(
             opacity: 1.0 - t,
-            child: _sizedOverlay(top.collapsedBuilder(context, _state), _collapsedSize),
+            child: AnimatedSwitcher(
+              duration: IslandMotion.activitySwapDuration,
+              transitionBuilder: _sequentialFadeTransitionBuilder,
+              child: KeyedSubtree(
+                key: entryKey,
+                child: _sizedOverlay(top.collapsedBuilder(context, _state), _collapsedSize),
+              ),
+            ),
           ),
         if (showExpanded)
           Opacity(
             opacity: t,
-            child: _sizedOverlay(top.expandedBuilder(context, _state), contentSize),
+            child: AnimatedSwitcher(
+              duration: IslandMotion.activitySwapDuration,
+              transitionBuilder: _sequentialFadeTransitionBuilder,
+              child: KeyedSubtree(
+                key: entryKey,
+                child: _sizedOverlay(top.expandedBuilder(context, _state), contentSize),
+              ),
+            ),
           ),
       ],
+    );
+  }
+
+  /// AnimatedSwitcher's own default transitionBuilder cross-fades: the
+  /// outgoing and incoming child are both partially visible for the whole
+  /// swap, opacities moving in opposite directions over the same window.
+  /// That reads fine when the two look related (a number changing to a
+  /// different number), but garbled when they're structurally unrelated —
+  /// confirmed live specifically for the stopwatch↔timer handback (30/70
+  /// lap-table layout vs. icon/countdown/bar layout), reported as visibly
+  /// janky, not just a still-frame artifact.
+  ///
+  /// This instead fades each child within its own disjoint half of the
+  /// animation: whichever one is *leaving* (its own AnimationStatus is
+  /// reverse) fades out entirely across [0, 0.5], and whichever is
+  /// *entering* (forward) fades in entirely across [0.5, 1] — so only one
+  /// of the two is ever visibly non-zero-opacity at a time, a true
+  /// sequential fade instead of a simultaneous cross-fade, at the same
+  /// total IslandMotion.activitySwapDuration.
+  ///
+  /// Regression: AnimatedSwitcher calls transitionBuilder exactly once per
+  /// entry, at creation — *before* it calls that entry's own
+  /// controller.forward()/.reverse() (confirmed by reading
+  /// animated_switcher.dart itself, then verifying empirically: a
+  /// standalone probe of transitionBuilder's own `animation.status` at
+  /// that single call showed AnimationStatus.dismissed for every entry,
+  /// outgoing and incoming alike, every time, since neither call has run
+  /// yet). Reading `animation.status` directly inside the builder body, as
+  /// an earlier version of this did, therefore always saw `dismissed` and
+  /// always misclassified the *incoming* child as outgoing — baked in
+  /// permanently, since the builder body only runs that once and the
+  /// CurvedAnimation it constructs is never rebuilt afterward. Confirmed
+  /// live: tapping the island's own timer Pause button forced a
+  /// same-instant view-generation bump, and the incoming entry — pinned to
+  /// the wrong [0.5, 1] interval, starting from `dismissed` — froze at
+  /// opacity 0 for the swap's entire first half, with the outgoing entry
+  /// already gone, producing a solid black frame with nothing painted
+  /// inside it. AnimatedBuilder here re-invokes this closure on every
+  /// frame instead of once, so `animation.status` is read live as the
+  /// controller actually ticks (genuinely `.forward`/`.reverse` by then,
+  /// not the one-time pre-tick `.dismissed` snapshot).
+  static Widget _sequentialFadeTransitionBuilder(Widget child, Animation<double> animation) {
+    return AnimatedBuilder(
+      animation: animation,
+      child: child,
+      builder: (context, child) {
+        final isOutgoing = animation.status == AnimationStatus.reverse;
+        final curved = isOutgoing
+            ? CurvedAnimation(parent: animation, curve: const Interval(0.5, 1.0))
+            : CurvedAnimation(parent: animation, curve: const Interval(0.0, 0.5));
+        return FadeTransition(opacity: curved, child: child);
+      },
+    );
+  }
+
+  /// Packed contiguously from the pill's right edge inward, in this fixed
+  /// priority order (mic, camera, screen capture) — skipping a slot for
+  /// whichever indicators are currently invisible rather than reserving
+  /// fixed slots for all three regardless of how many are actually
+  /// showing. Fixed slots meant mic + screen-capture with camera off left
+  /// a visibly empty gap between the two dots that were actually there,
+  /// where camera's reserved (but unused) slot used to sit.
+  ///
+  /// [forceCompact] renders over an activity's own expanded content (see the
+  /// call site in `build`) rather than the collapsed pill: there's no "home
+  /// state, dots centered" concept once something else's real content is
+  /// showing — the dots always sit top-right compact here, same corner
+  /// treatment as compact-state on the collapsed pill just against that
+  /// box's own, different corner radius (24px, fixed, vs. the collapsed
+  /// pill's ~20px — see `build`'s own `radius` calc), so the clearance
+  /// constant is its own number, not reused from the collapsed case.
+  Widget _privacyDots({bool forceCompact = false}) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        _microphoneIndicator.dotTransition,
+        _cameraIndicator.dotTransition,
+        _screenCaptureIndicator.dotTransition,
+        _dotsCompactTransition,
+      ]),
+      builder: (context, _) {
+        final compactT = forceCompact ? 1.0 : Curves.easeInOut.transform(_dotsCompactTransition.value);
+        // Home-state (compactT: 0) spacing between dots — unaffected by any
+        // of what follows, still the original 12px per slot. Unused when
+        // forceCompact, since compactT is pinned to 1 the whole time there.
+        const homeSpacing = 12.0;
+        // Compact-state horizontal spacing is a separate, smaller number
+        // (halving read right once the dots had also shrunk) — but the
+        // *closest* dot additionally needs enough total clearance from the
+        // right edge to clear the pill's own rounded corner (ClipRRect,
+        // ~20px radius at this collapsed size) — 9px was the bare minimum
+        // measured to do that at all, but still read as too tight against
+        // the border in practice; 13 leaves real breathing room beyond
+        // "not clipped," while still clearing content the same way (see
+        // PrivacyIndicatorDot's own doc comment for why this is no longer
+        // the same number as the vertical inset).
+        const compactCornerOffset = 13.0;
+        // The expanded card's corner is a fixed, larger 24px radius (vs. the
+        // collapsed pill's own ~20px this constant was measured against) —
+        // not yet independently verified live against that exact radius;
+        // starts from the same value and is the first thing to adjust if it
+        // reads clipped or too tight once actually seen expanded.
+        const expandedCompactCornerOffset = 13.0;
+        const compactInterDotGap = 6.0;
+        const compactTopInset = 4.0;
+        final effectiveCornerOffset = forceCompact ? expandedCompactCornerOffset : compactCornerOffset;
+        final indicators = [
+          (_microphoneIndicator, const Color(0xFFFF9F0A), 'Microphone in use.'),
+          (_cameraIndicator, const Color(0xFF32D74B), 'Camera in use.'),
+          (_screenCaptureIndicator, const Color(0xFFBF5AF2), 'Screen Recording.'),
+        ];
+        var slot = 0;
+        final dots = <Widget>[];
+        for (final (indicator, color, label) in indicators) {
+          if (indicator.dotTransition.value <= 0) continue;
+          slot++;
+          dots.add(
+            PrivacyIndicatorDot(
+              transition: indicator.dotTransition,
+              color: color,
+              label: label,
+              rightOffset: homeSpacing * slot,
+              compactRightOffset: effectiveCornerOffset + (slot - 1) * compactInterDotGap,
+              compactTopInset: compactTopInset,
+              compactT: compactT,
+            ),
+          );
+        }
+        return Stack(children: dots);
+      },
     );
   }
 
@@ -338,6 +594,23 @@ class _IslandShellState extends State<IslandShell> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     final top = _stack.top;
+    if (top?.id != _lastTopId) {
+      _lastTopId = top?.id;
+      _topIdGeneration++;
+    }
+    // The battery fallback (or nothing registered at all, in principle)
+    // is the only case the dots' normal centered position was ever
+    // designed for — anything else on top has its own elements roughly
+    // where a centered dot would sit.
+    final isHomeState = top == null || top.id == 'battery';
+    if (isHomeState != _lastIsHomeState) {
+      _lastIsHomeState = isHomeState;
+      if (isHomeState) {
+        _dotsCompactTransition.reverse();
+      } else {
+        _dotsCompactTransition.forward();
+      }
+    }
     final canExpandOnTap = _state == LifecycleState.collapsed || _state == LifecycleState.hover;
     final targetSize = _targetContentSize;
     if (targetSize != _collapsedSize) _lastExpandedContentSize = targetSize;
@@ -371,20 +644,36 @@ class _IslandShellState extends State<IslandShell> with SingleTickerProviderStat
                 final radius = math.min(24.0, math.min(constraints.maxWidth, constraints.maxHeight) / 2);
                 return ClipRRect(
                   borderRadius: BorderRadius.circular(radius),
-                  child: AnimatedBuilder(
-                    animation: _contentTransition,
-                    builder: (context, _) {
-                      final contentT = IslandMotion.expansionCurve.transform(_contentTransition.value);
-                      return AnimatedContainer(
-                        duration: IslandMotion.expansionDuration,
-                        curve: IslandMotion.expansionCurve,
-                        color: top?.priority == ActivityPriority.p1Immediate ? const Color(0xFF3A1414) : Colors.black,
-                        alignment: Alignment.topCenter,
-                        child: top == null
-                            ? const SizedBox.shrink()
-                            : _crossFadedContent(context, top, contentT, contentSize),
-                      );
-                    },
+                  child: Stack(
+                    children: [
+                      AnimatedBuilder(
+                        animation: _contentTransition,
+                        builder: (context, _) {
+                          final contentT = IslandMotion.expansionCurve.transform(_contentTransition.value);
+                          return AnimatedContainer(
+                            duration: IslandMotion.expansionDuration,
+                            curve: IslandMotion.expansionCurve,
+                            color: top?.priority == ActivityPriority.p1Immediate ? const Color(0xFF3A1414) : Colors.black,
+                            alignment: Alignment.topCenter,
+                            child: top == null
+                                ? const SizedBox.shrink()
+                                : _crossFadedContent(context, top, contentT, contentSize),
+                          );
+                        },
+                      ),
+                      // The privacy dots overlay whatever's currently
+                      // showing, collapsed or expanded — something as
+                      // privacy-sensitive as "is my mic/camera/screen
+                      // currently active" shouldn't be able to go invisible
+                      // just because the island happens to be expanded to
+                      // some other activity's detail view at the time.
+                      if (_state == LifecycleState.collapsed ||
+                          _state == LifecycleState.hover ||
+                          _state == LifecycleState.collapsing)
+                        _privacyDots()
+                      else
+                        _privacyDots(forceCompact: true),
+                    ],
                   ),
                 );
               },
@@ -395,3 +684,4 @@ class _IslandShellState extends State<IslandShell> with SingleTickerProviderStat
     );
   }
 }
+

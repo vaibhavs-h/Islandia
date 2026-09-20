@@ -13,6 +13,9 @@ class MainFlutterWindow: NSWindow {
   private let batteryStreamHandler = BatteryStreamHandler()
   private let nowPlayingChannel = NowPlayingChannel()
   private let audioRouteChannel = AudioRouteChannel()
+  private let microphoneActivityChannel = MicrophoneActivityChannel()
+  private let cameraActivityChannel = CameraActivityChannel()
+  private let screenCaptureActivityChannel = ScreenCaptureActivityChannel()
 
   override func awakeFromNib() {
     flutterViewController = FlutterViewController()
@@ -31,6 +34,9 @@ class MainFlutterWindow: NSWindow {
     batteryChannel.setStreamHandler(batteryStreamHandler)
     nowPlayingChannel.register(on: flutterViewController)
     audioRouteChannel.register(on: flutterViewController)
+    microphoneActivityChannel.register(on: flutterViewController)
+    cameraActivityChannel.register(on: flutterViewController)
+    screenCaptureActivityChannel.register(on: flutterViewController)
 
     configureAsIslandPanel()
 

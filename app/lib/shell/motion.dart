@@ -16,4 +16,12 @@ class IslandMotion {
   /// velocity, which reads as "snappy," not "smooth." The native side
   /// dropped its overshoot to match (see MainFlutterWindow.setPillFrame).
   static const Curve expansionCurve = Curves.easeOutCubic;
+
+  /// A *different* activity taking the top slot (Now Playing stopping,
+  /// battery resuming its place; one of the privacy activities' own
+  /// prominent banners arriving over whatever was showing) — no box resize
+  /// is usually involved, just a content swap, so this is its own, shorter
+  /// fade rather than reusing [expansionDuration]. See
+  /// IslandShell._crossFadedContent.
+  static const Duration activitySwapDuration = Duration(milliseconds: 350);
 }
