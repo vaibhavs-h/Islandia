@@ -9,6 +9,9 @@ import '../engine/activity_stack.dart';
 import '../providers/audio_route_provider.dart';
 import '../providers/battery_activity.dart';
 import '../providers/battery_provider.dart';
+import '../providers/bluetooth_battery_activity.dart';
+import '../providers/bluetooth_battery_provider.dart';
+import '../providers/bluetooth_classic_provider.dart';
 import '../providers/camera_activity_activity.dart';
 import '../providers/camera_activity_provider.dart';
 import '../providers/microphone_activity_activity.dart';
@@ -107,6 +110,13 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
   StreamSubscription<BatterySnapshot>? _batterySubscription;
   StreamSubscription<NowPlayingSnapshot?>? _nowPlayingSubscription;
   StreamSubscription<AudioRouteSnapshot?>? _audioRouteSubscription;
+  StreamSubscription<List<BluetoothDeviceBattery>>? _bluetoothBatterySubscription;
+  /// Null until the first emission — that first one is the baseline of
+  /// whatever's already connected when Islandia starts, not a batch of
+  /// devices that all "just connected." Only emissions after that are
+  /// diffed into connect/disconnect notifications.
+  Set<String>? _lastBluetoothDeviceNames;
+  StreamSubscription<BluetoothClassicEvent>? _bluetoothClassicSubscription;
   StreamSubscription<bool>? _microphoneActivitySubscription;
   StreamSubscription<bool>? _cameraActivitySubscription;
   StreamSubscription<bool>? _screenCaptureActivitySubscription;
@@ -178,6 +188,8 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
     _batterySubscription?.cancel();
     _nowPlayingSubscription?.cancel();
     _audioRouteSubscription?.cancel();
+    _bluetoothBatterySubscription?.cancel();
+    _bluetoothClassicSubscription?.cancel();
     _microphoneActivitySubscription?.cancel();
     _cameraActivitySubscription?.cancel();
     _screenCaptureActivitySubscription?.cancel();
@@ -209,6 +221,36 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
       (snapshot) => _stack.register(buildBatteryActivity(snapshot)),
     );
 
+    // Only the standard GATT Battery Service — an empty list (nothing
+    // connected reports battery this way) is real and common, not an error;
+    // same null/empty-means-absent gating as Now Playing above.
+    _bluetoothBatterySubscription = BluetoothBatteryProvider.updates.listen((devices) {
+      if (devices.isEmpty) {
+        _stack.remove('bluetooth-battery');
+      } else {
+        _stack.register(buildBluetoothBatteryActivity(devices));
+      }
+      _detectBluetoothConnectionChanges(devices);
+    });
+
+    // Classic accessories (headphones, earbuds, speakers) never appear in
+    // the CoreBluetooth-based stream above at all — see
+    // BluetoothClassicChannel.swift for why. IOBluetooth hands over discrete
+    // connect/disconnect events directly, so unlike the snapshot-diffing
+    // above, this just forwards each one straight to the same notification
+    // slot. Battery (see the provider and the native side for where it
+    // actually comes from) rides along on the same event when a connect
+    // happened to have one available.
+    _bluetoothClassicSubscription = BluetoothClassicProvider.updates.listen((event) {
+      _stack.register(
+        buildBluetoothConnectionActivity(
+          deviceName: event.name,
+          connected: event.connected,
+          batteryPercent: event.batteryPercent,
+        ),
+      );
+    });
+
     _microphoneActivitySubscription = MicrophoneActivityProvider.updates.listen(_microphoneIndicator.handle);
     _cameraActivitySubscription = CameraActivityProvider.updates.listen(_cameraIndicator.handle);
     _screenCaptureActivitySubscription = ScreenCaptureActivityProvider.updates.listen(_screenCaptureIndicator.handle);
@@ -216,6 +258,34 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
     if (!mounted) return;
     setState(() => _screen = screen);
     await _applyFrame(animated: false);
+  }
+
+  /// Diffs successive battery-list snapshots into connect/disconnect
+  /// notifications — no separate native channel needed, since a device
+  /// joining or leaving the tracked set is exactly what a name appearing or
+  /// disappearing from this list means. If both happen in the same tick,
+  /// the disconnect wins the (single, shared) notification slot — arbitrary,
+  /// but a real simultaneous connect+disconnect is not a case worth
+  /// engineering around.
+  void _detectBluetoothConnectionChanges(List<BluetoothDeviceBattery> devices) {
+    final currentNames = devices.map((d) => d.name).toSet();
+    final previousNames = _lastBluetoothDeviceNames;
+    _lastBluetoothDeviceNames = currentNames;
+    if (previousNames == null) return;
+
+    final disconnected = previousNames.difference(currentNames);
+    if (disconnected.isNotEmpty) {
+      _stack.register(buildBluetoothConnectionActivity(deviceName: disconnected.first, connected: false));
+      return;
+    }
+    final connected = currentNames.difference(previousNames);
+    if (connected.isNotEmpty) {
+      final name = connected.first;
+      // The device that just connected is in this same snapshot — its
+      // current reading, not a lookup anywhere else.
+      final percent = devices.where((d) => d.name == name).firstOrNull?.batteryPercent;
+      _stack.register(buildBluetoothConnectionActivity(deviceName: name, connected: true, batteryPercent: percent));
+    }
   }
 
   /// Now Playing's registration is gated on [_lastNowPlaying] plus the
