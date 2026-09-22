@@ -88,7 +88,7 @@ Several of the above depend on undocumented sources rather than a public API: ca
 
 * **App Shell** (`app/`): [Flutter](https://flutter.dev/) (Dart) for the UI/Activity Engine, Swift for everything AppKit-only (window behavior, MediaRemote, CoreAudio, CoreBluetooth/IOBluetooth, CoreWLAN, Accessibility). `video_player` for the Now Playing waveform indicator.
 * **Marketing Site** (`/`): [Next.js 16](https://nextjs.org/) (App Router), React 19, TypeScript, TailwindCSS 4, Framer Motion, Lucide React Icons, `clsx`, `tailwind-merge`.
-* **Distribution (initial)**: Free Apple ID + Xcode personal-team signing; Apple Developer Program enrollment and notarization planned for the ship phase.
+* **Distribution**: direct download from our own website, not the Mac App Store — a deliberate choice, since several core features here (private-API log scraping, Accessibility UI-scripting on another app) wouldn't survive App Store review anyway. Apple Developer Program enrollment + notarization are still required even for direct distribution (Gatekeeper blocks unnotarized downloads on a fresh Mac); currently on free Apple ID + Xcode personal-team signing until the ship phase. One fully-furnished release rather than a frequent-update cadence — no in-app auto-update mechanism planned.
 * **Permissions requested**: Bluetooth, Location (Wi-Fi SSID only — never used for actual location), and Accessibility (Clock control, source-app window raising). Notably *not* microphone or camera — both privacy indicators read out-of-band system signals instead.
 
 ---
@@ -155,7 +155,7 @@ Tracked in detail against the full build blueprint in `temp/ROADMAP_PROGRESS.md`
 4. **Developer & Power-User Activities** *(not started)* — downloads/file-transfer, system monitor, then (later) dev-tool and cloud-deploy integrations.
 5. **Website** *(shipped)*.
 6. **Communications & Live Activities** *(later)* — calls/meetings, sports/travel — deliberately last, since these depend on the least stable APIs.
-7. **Ship** — Apple Developer Program enrollment, notarization, one-time-purchase licensing.
+7. **Ship** — Apple Developer Program enrollment, notarization, one-time-purchase licensing, direct download from our own website (no App Store).
 8. **Intelligence, Windows & Future** *(later)* — an AI command layer, an all-displays mode, a Windows port.
 
 ---
