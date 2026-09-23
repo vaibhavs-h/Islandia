@@ -12,6 +12,8 @@ import '../providers/battery_provider.dart';
 import '../providers/bluetooth_battery_activity.dart';
 import '../providers/bluetooth_battery_provider.dart';
 import '../providers/bluetooth_classic_provider.dart';
+import '../providers/calamity_alert_activity.dart';
+import '../providers/calamity_alert_provider.dart';
 import '../providers/camera_activity_activity.dart';
 import '../providers/camera_activity_provider.dart';
 import '../providers/clock_alarm_activity.dart';
@@ -169,6 +171,17 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
   bool _timerHeldByPause = false;
   StreamSubscription<WiFiConnectionEvent>? _wifiConnectionSubscription;
   StreamSubscription<WeatherSnapshot>? _weatherSubscription;
+  StreamSubscription<CalamityAlert>? _calamityAlertSubscription;
+
+  /// USGS/GDACS keep an event in their own feed for a while (e.g. an
+  /// earthquake stays in USGS's "past day" feed for 24h), so native
+  /// re-emits the same event id on every poll tick it's still present —
+  /// without this, the same earthquake would re-alert every 1-5 minutes
+  /// for as long as it stays in the feed. Alert once per genuinely new id,
+  /// same reasoning as _lastAlarmsById's own diffing, just a simpler Set
+  /// since there's no "edited" or "removed" case here to track, only
+  /// "have I already shown this."
+  final Set<String> _seenCalamityAlertIds = {};
 
   /// Tracks only the severe/not-severe edge — the P2 alert should fire once
   /// on the transition into severe conditions, not every hourly poll tick
@@ -255,6 +268,7 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
     _clockAwarenessSubscription?.cancel();
     _wifiConnectionSubscription?.cancel();
     _weatherSubscription?.cancel();
+    _calamityAlertSubscription?.cancel();
     super.dispose();
   }
 
@@ -333,6 +347,12 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
       // _lastWeatherWasSevere's own doc comment.
       if (snapshot.isSevere && wasSevere == false) {
         _stack.register(buildSevereWeatherAlertActivity(snapshot));
+      }
+    });
+
+    _calamityAlertSubscription = CalamityAlertProvider.updates.listen((alert) {
+      if (_seenCalamityAlertIds.add(alert.id)) {
+        _stack.register(buildCalamityAlertActivity(alert));
       }
     });
 

@@ -24,6 +24,7 @@
 		164EB1FE0267015B69D6C4DF /* WiFiConnectionChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7294696FD1599CBF804062AF /* WiFiConnectionChannel.swift */; };
 		430F60123D694C53A06260E9 /* WeatherChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24FDAC6F560045F7AD84F65E /* WeatherChannel.swift */; };
 		27356FF0AD01401AB8488274 /* LocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9521F222800487D8A3A650E /* LocationProvider.swift */; };
+		E31CBAF678484DC2903A4231 /* CalamityAlertChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15FBEEB373B24052A6DFFE56 /* CalamityAlertChannel.swift */; };
 		1A5DD2A8F90256FDF15BEDD4 /* ClockAlarmRingingWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22E8F40AB4546ACDA202B8AD /* ClockAlarmRingingWatcher.swift */; };
 		331C80D8294CF71000263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C80D7294CF71000263BE5 /* RunnerTests.swift */; };
 		335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */ = {isa = PBXBuildFile; fileRef = 335BBD1A22A9A15E00E9071D /* GeneratedPluginRegistrant.swift */; };
@@ -104,6 +105,7 @@
 		7294696FD1599CBF804062AF /* WiFiConnectionChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WiFiConnectionChannel.swift; sourceTree = "<group>"; };
 		24FDAC6F560045F7AD84F65E /* WeatherChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WeatherChannel.swift; sourceTree = "<group>"; };
 		D9521F222800487D8A3A650E /* LocationProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocationProvider.swift; sourceTree = "<group>"; };
+		15FBEEB373B24052A6DFFE56 /* CalamityAlertChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalamityAlertChannel.swift; sourceTree = "<group>"; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		869EB703F288D84E977884F3 /* WindowServerStatusIndicatorAdapter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowServerStatusIndicatorAdapter.swift; sourceTree = "<group>"; };
@@ -226,6 +228,7 @@
 				7294696FD1599CBF804062AF /* WiFiConnectionChannel.swift */,
 				24FDAC6F560045F7AD84F65E /* WeatherChannel.swift */,
 				D9521F222800487D8A3A650E /* LocationProvider.swift */,
+				15FBEEB373B24052A6DFFE56 /* CalamityAlertChannel.swift */,
 				6E4F4B6DE7FB282ADC417593 /* ClockStopwatchController.swift */,
 				A7F2F3FE16DF6BBB4E0DE2E1 /* ClockUIController.swift */,
 				5792DD0D2A7F83C4E1362303 /* ClockTimerController.swift */,
@@ -446,6 +449,7 @@
 				164EB1FE0267015B69D6C4DF /* WiFiConnectionChannel.swift in Sources */,
 				430F60123D694C53A06260E9 /* WeatherChannel.swift in Sources */,
 				27356FF0AD01401AB8488274 /* LocationProvider.swift in Sources */,
+				E31CBAF678484DC2903A4231 /* CalamityAlertChannel.swift in Sources */,
 				8BA7834FE7BEE59CBD84AC8D /* ClockStopwatchController.swift in Sources */,
 				964BD7533E46D21EDF0022E6 /* ClockUIController.swift in Sources */,
 				C89DBDAD20E5D5CCAB14DA75 /* ClockTimerController.swift in Sources */,

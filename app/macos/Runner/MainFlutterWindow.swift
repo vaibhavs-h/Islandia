@@ -21,6 +21,7 @@ class MainFlutterWindow: NSWindow {
   private let wifiConnectionChannel = WiFiConnectionChannel()
   private let clockActivityChannel = ClockActivityChannel()
   private let weatherChannel = WeatherChannel()
+  private let calamityAlertChannel = CalamityAlertChannel()
 
   override func awakeFromNib() {
     flutterViewController = FlutterViewController()
@@ -47,6 +48,7 @@ class MainFlutterWindow: NSWindow {
     wifiConnectionChannel.register(on: flutterViewController)
     clockActivityChannel.register(on: flutterViewController)
     weatherChannel.register(on: flutterViewController)
+    calamityAlertChannel.register(on: flutterViewController)
 
     configureAsIslandPanel()
 

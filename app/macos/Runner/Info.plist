@@ -27,7 +27,7 @@
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Islandia reads connected Bluetooth accessories' battery level to show it on the Island.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Islandia uses your location to show current weather on the Island, and reads the current Wi-Fi network's name to show connect/disconnect alerts — macOS only allows reading a Wi-Fi network's name to apps with location access.</string>
+	<string>Islandia uses your location to show current weather and nearby disaster alerts on the Island, and reads the current Wi-Fi network's name to show connect/disconnect alerts — macOS only allows reading a Wi-Fi network's name to apps with location access.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSMainNibFile</key>
