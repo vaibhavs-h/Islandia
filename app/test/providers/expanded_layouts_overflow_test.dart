@@ -5,6 +5,8 @@ import 'package:islandia/providers/battery_activity.dart';
 import 'package:islandia/providers/battery_provider.dart';
 import 'package:islandia/providers/clock_awareness_activity.dart';
 import 'package:islandia/providers/clock_awareness_provider.dart';
+import 'package:islandia/providers/weather_activity.dart';
+import 'package:islandia/providers/weather_provider.dart';
 
 /// Every activity's expanded content is rendered into the same fixed
 /// 360x136 box (IslandShell._expandedSize) — this pumps each one at those
@@ -125,6 +127,44 @@ void main() {
       ),
     );
     final activity = buildClockAwarenessActivity(snapshot, ClockAwarenessView.stopwatch, generation: 0);
+
+    await pumpExpanded(tester, activity);
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('weather expanded view does not overflow (cloudy — the drifting second-cloud layer)', (tester) async {
+    const snapshot = WeatherSnapshot(
+      temperatureCelsius: 18,
+      apparentTemperatureCelsius: 17,
+      humidityPercent: 60,
+      weatherCode: 3,
+      isSevere: false,
+      isDay: true,
+      precipitationMillimeters: 0,
+      windSpeedKmh: 15,
+      windDirectionDegrees: 45,
+    );
+    final activity = buildWeatherActivity(snapshot);
+
+    await pumpExpanded(tester, activity);
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('weather expanded view does not overflow (fog — the drifting second-mist layer)', (tester) async {
+    const snapshot = WeatherSnapshot(
+      temperatureCelsius: 8,
+      apparentTemperatureCelsius: 6,
+      humidityPercent: 95,
+      weatherCode: 48,
+      isSevere: false,
+      isDay: true,
+      precipitationMillimeters: 0.2,
+      windSpeedKmh: 3,
+      windDirectionDegrees: 270,
+    );
+    final activity = buildWeatherActivity(snapshot);
 
     await pumpExpanded(tester, activity);
 
