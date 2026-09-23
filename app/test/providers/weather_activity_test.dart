@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:islandia/engine/activity.dart';
 import 'package:islandia/providers/weather_activity.dart';
 import 'package:islandia/providers/weather_provider.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// A fully-populated, plausible snapshot with sensible defaults for every
 /// field — tests override only the ones they actually care about, rather
@@ -54,7 +55,7 @@ void main() {
       await pumpCollapsed(tester, activity);
 
       expect(find.text('30°'), findsOneWidget);
-      expect(find.byIcon(Icons.wb_sunny), findsOneWidget);
+      expect(find.byIcon(LucideIcons.sun), findsOneWidget);
       expect(find.bySemanticsLabel('30 degrees, Clear.'), findsOneWidget);
     });
 
@@ -62,14 +63,14 @@ void main() {
       final activity = buildWeatherActivity(_snapshot(weatherCode: 0, isDay: false));
       await pumpCollapsed(tester, activity);
 
-      expect(find.byIcon(Icons.nights_stay), findsOneWidget);
-      expect(find.byIcon(Icons.wb_sunny), findsNothing);
+      expect(find.byIcon(LucideIcons.moon), findsOneWidget);
+      expect(find.byIcon(LucideIcons.sun), findsNothing);
     });
 
     testWidgets('"mainly clear" (code 1) gets the same sun/moon treatment as "clear" (code 0)', (tester) async {
       final activity = buildWeatherActivity(_snapshot(weatherCode: 1, isDay: true));
       await pumpCollapsed(tester, activity);
-      expect(find.byIcon(Icons.wb_sunny), findsOneWidget);
+      expect(find.byIcon(LucideIcons.sun), findsOneWidget);
     });
 
     testWidgets('a non-clear condition (rain) shows the same icon regardless of day or night', (tester) async {
@@ -77,10 +78,10 @@ void main() {
       await pumpCollapsed(tester, activity);
 
       // No day/night variant exists for rain — should still be the plain
-      // rain-drop icon, never a moon, since is_day only ever branches the
+      // rain-cloud icon, never a moon, since is_day only ever branches the
       // clear-sky case.
-      expect(find.byIcon(Icons.water_drop), findsOneWidget);
-      expect(find.byIcon(Icons.nights_stay), findsNothing);
+      expect(find.byIcon(LucideIcons.cloudRain), findsOneWidget);
+      expect(find.byIcon(LucideIcons.moon), findsNothing);
     });
 
     testWidgets('always registers under the fixed "weather" id, like battery', (tester) async {
@@ -102,7 +103,7 @@ void main() {
       expect(find.text('12°'), findsOneWidget);
       expect(find.text('Rain'), findsOneWidget);
       expect(find.text('Feels like 9°'), findsOneWidget);
-      expect(find.byIcon(Icons.water_drop), findsWidgets);
+      expect(find.byIcon(LucideIcons.cloudRain), findsWidgets);
     });
 
     testWidgets('a thunderstorm code maps to the thunderstorm icon and label', (tester) async {
@@ -110,7 +111,7 @@ void main() {
       await pumpExpanded(tester, activity);
 
       expect(find.text('Thunderstorm'), findsOneWidget);
-      expect(find.byIcon(Icons.thunderstorm), findsOneWidget);
+      expect(find.byIcon(LucideIcons.cloudLightning), findsOneWidget);
     });
 
     testWidgets('shows humidity, wind (with compass direction), and precipitation, each with a caption', (tester) async {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../engine/activity.dart';
 import 'weather_provider.dart';
@@ -38,19 +39,29 @@ Activity buildSevereWeatherAlertActivity(WeatherSnapshot snapshot) {
   );
 }
 
+/// Lucide's icon set (lucide.dev, via the `lucide_icons_flutter` package —
+/// the plain `lucide_icons` package's IconData subclass fails to compile
+/// against this Flutter SDK's now-sealed/final IconData; this package
+/// constructs plain font-based IconData literals instead, which stays
+/// compatible) — chosen specifically to match a reference weather-widget
+/// design's own icon choices exactly (Sun/Moon/Cloud/CloudRain/Snowflake/
+/// CloudLightning/CloudFog/Thermometer), not Material's built-in
+/// weather-ish icons.
+///
 /// Only the clear-sky case (WMO 0-1, "clear"/"mainly clear") varies by
 /// [isDay] — a sun by day, a moon by night, via Open-Meteo's own `is_day`
 /// field (real sunrise/sunset for that location, not a client-side clock
 /// guess). Every other condition (cloudy, rain, snow, etc.) keeps one icon
-/// regardless of time of day.
+/// regardless of time of day, matching the reference — only its Sun/Moon
+/// pair varies by isDay too.
 IconData _iconFor(int weatherCode, {required bool isDay}) {
-  if (weatherCode <= 1) return isDay ? Icons.wb_sunny : Icons.nights_stay;
-  if (weatherCode <= 3) return Icons.cloud;
-  if (weatherCode == 45 || weatherCode == 48) return Icons.foggy;
-  if (weatherCode >= 51 && weatherCode <= 67) return Icons.water_drop;
-  if (weatherCode >= 71 && weatherCode <= 86) return Icons.ac_unit;
-  if (weatherCode >= 95) return Icons.thunderstorm;
-  return Icons.cloud;
+  if (weatherCode <= 1) return isDay ? LucideIcons.sun : LucideIcons.moon;
+  if (weatherCode <= 3) return LucideIcons.cloud;
+  if (weatherCode == 45 || weatherCode == 48) return LucideIcons.cloudFog;
+  if (weatherCode >= 51 && weatherCode <= 67) return LucideIcons.cloudRain;
+  if (weatherCode >= 71 && weatherCode <= 86) return LucideIcons.snowflake;
+  if (weatherCode >= 95) return LucideIcons.cloudLightning;
+  return LucideIcons.thermometer;
 }
 
 String _conditionFor(int weatherCode) {
