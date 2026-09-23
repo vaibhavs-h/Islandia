@@ -24,6 +24,8 @@ import '../providers/now_playing_provider.dart';
 import '../providers/now_playing_visibility_gate.dart';
 import '../providers/screen_capture_activity.dart';
 import '../providers/screen_capture_activity_provider.dart';
+import '../providers/weather_activity.dart';
+import '../providers/weather_provider.dart';
 import '../providers/wifi_connection_activity.dart';
 import '../providers/wifi_connection_provider.dart';
 import 'island_window_channel.dart';
@@ -166,6 +168,17 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
   /// _TimerExpanded's own separate, local concern (see its doc comment).
   bool _timerHeldByPause = false;
   StreamSubscription<WiFiConnectionEvent>? _wifiConnectionSubscription;
+  StreamSubscription<WeatherSnapshot>? _weatherSubscription;
+
+  /// Tracks only the severe/not-severe edge — the P2 alert should fire once
+  /// on the transition into severe conditions, not every hourly poll tick
+  /// for as long as it stays severe (which would just be the same
+  /// notification repeating with nothing new to say). Null until the first
+  /// reading arrives, so that first reading is captured as a baseline
+  /// rather than treated as a transition even if it happens to already be
+  /// severe — same "don't announce what was already true" rule
+  /// WiFiConnectionChannel's lastKnownSSID follows.
+  bool? _lastWeatherWasSevere;
   NowPlayingSnapshot? _lastNowPlaying;
   AudioRouteSnapshot? _lastAudioRoute;
 
@@ -241,6 +254,7 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
     _screenCaptureActivitySubscription?.cancel();
     _clockAwarenessSubscription?.cancel();
     _wifiConnectionSubscription?.cancel();
+    _weatherSubscription?.cancel();
     super.dispose();
   }
 
@@ -309,6 +323,17 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
     // already hands over distinct join/leave events, nothing to diff here.
     _wifiConnectionSubscription = WiFiConnectionProvider.updates.listen((event) {
       _stack.register(buildWiFiConnectionActivity(networkName: event.name, connected: event.connected));
+    });
+
+    _weatherSubscription = WeatherProvider.updates.listen((snapshot) {
+      _stack.register(buildWeatherActivity(snapshot));
+      final wasSevere = _lastWeatherWasSevere;
+      _lastWeatherWasSevere = snapshot.isSevere;
+      // Only the transition into severe fires the P2 alert — see
+      // _lastWeatherWasSevere's own doc comment.
+      if (snapshot.isSevere && wasSevere == false) {
+        _stack.register(buildSevereWeatherAlertActivity(snapshot));
+      }
     });
 
     if (!mounted) return;

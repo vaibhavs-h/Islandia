@@ -20,6 +20,7 @@ class MainFlutterWindow: NSWindow {
   private let screenCaptureActivityChannel = ScreenCaptureActivityChannel()
   private let wifiConnectionChannel = WiFiConnectionChannel()
   private let clockActivityChannel = ClockActivityChannel()
+  private let weatherChannel = WeatherChannel()
 
   override func awakeFromNib() {
     flutterViewController = FlutterViewController()
@@ -45,6 +46,7 @@ class MainFlutterWindow: NSWindow {
     screenCaptureActivityChannel.register(on: flutterViewController)
     wifiConnectionChannel.register(on: flutterViewController)
     clockActivityChannel.register(on: flutterViewController)
+    weatherChannel.register(on: flutterViewController)
 
     configureAsIslandPanel()
 

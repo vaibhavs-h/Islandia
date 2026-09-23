@@ -1,0 +1,86 @@
+import 'package:flutter/services.dart';
+
+/// One current-conditions reading — see WeatherChannel.swift for where
+/// this comes from (Open-Meteo, gated behind Location Services
+/// authorization, polled hourly since the API has no push mechanism).
+class WeatherSnapshot {
+  const WeatherSnapshot({
+    required this.temperatureCelsius,
+    required this.apparentTemperatureCelsius,
+    required this.humidityPercent,
+    required this.weatherCode,
+    required this.isSevere,
+    required this.isDay,
+    required this.precipitationMillimeters,
+    required this.cloudCoverPercent,
+    required this.pressureMsl,
+    required this.windSpeedKmh,
+    required this.windDirectionDegrees,
+    required this.windGustsKmh,
+    required this.dewPointCelsius,
+    required this.uvIndex,
+  });
+
+  final double temperatureCelsius;
+
+  /// "Feels like" — Open-Meteo's own apparent_temperature, which factors
+  /// in humidity and wind rather than just the raw air reading.
+  final double apparentTemperatureCelsius;
+
+  final double humidityPercent;
+  final int weatherCode;
+
+  /// True when [weatherCode] falls in WeatherChannel's own severeWeatherCodes
+  /// set — a self-defined approximation from conditions data, not real
+  /// government alert data (Open-Meteo exposes no alerts endpoint at all).
+  final bool isSevere;
+
+  /// Real day/night state for the reading's own location, from Open-
+  /// Meteo's own `is_day` field (computed against that location's actual
+  /// sunrise/sunset for the day) — not derived from the device's own
+  /// clock, which would be wrong the instant this is read anywhere but
+  /// the user's own timezone.
+  final bool isDay;
+
+  final double precipitationMillimeters;
+  final double cloudCoverPercent;
+  final double pressureMsl;
+  final double windSpeedKmh;
+  final double windDirectionDegrees;
+  final double windGustsKmh;
+  final double dewPointCelsius;
+  final double uvIndex;
+}
+
+/// Current weather (§05, Phase 3) via Open-Meteo — the app's first
+/// networked data source; every other provider here reads purely local
+/// system state. Native already hands over one complete reading per poll
+/// tick, nothing to diff here, just forward each one — same shape as
+/// WiFiConnectionProvider.
+class WeatherProvider {
+  WeatherProvider._();
+
+  static const EventChannel _channel = EventChannel('islandia/weather/updates');
+
+  static Stream<WeatherSnapshot> get updates {
+    return _channel.receiveBroadcastStream().map((event) {
+      final map = (event as Map).cast<String, Object?>();
+      return WeatherSnapshot(
+        temperatureCelsius: (map['temperatureCelsius'] as num).toDouble(),
+        apparentTemperatureCelsius: (map['apparentTemperatureCelsius'] as num).toDouble(),
+        humidityPercent: (map['humidityPercent'] as num).toDouble(),
+        weatherCode: map['weatherCode'] as int,
+        isSevere: map['isSevere'] as bool,
+        isDay: map['isDay'] as bool,
+        precipitationMillimeters: (map['precipitationMillimeters'] as num).toDouble(),
+        cloudCoverPercent: (map['cloudCoverPercent'] as num).toDouble(),
+        pressureMsl: (map['pressureMsl'] as num).toDouble(),
+        windSpeedKmh: (map['windSpeedKmh'] as num).toDouble(),
+        windDirectionDegrees: (map['windDirectionDegrees'] as num).toDouble(),
+        windGustsKmh: (map['windGustsKmh'] as num).toDouble(),
+        dewPointCelsius: (map['dewPointCelsius'] as num).toDouble(),
+        uvIndex: (map['uvIndex'] as num).toDouble(),
+      );
+    }).handleError((Object _) {});
+  }
+}
