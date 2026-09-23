@@ -12,13 +12,8 @@ class WeatherSnapshot {
     required this.isSevere,
     required this.isDay,
     required this.precipitationMillimeters,
-    required this.cloudCoverPercent,
-    required this.pressureMsl,
     required this.windSpeedKmh,
     required this.windDirectionDegrees,
-    required this.windGustsKmh,
-    required this.dewPointCelsius,
-    required this.uvIndex,
   });
 
   final double temperatureCelsius;
@@ -43,13 +38,8 @@ class WeatherSnapshot {
   final bool isDay;
 
   final double precipitationMillimeters;
-  final double cloudCoverPercent;
-  final double pressureMsl;
   final double windSpeedKmh;
   final double windDirectionDegrees;
-  final double windGustsKmh;
-  final double dewPointCelsius;
-  final double uvIndex;
 }
 
 /// Current weather (§05, Phase 3) via Open-Meteo — the app's first
@@ -73,13 +63,8 @@ class WeatherProvider {
         isSevere: map['isSevere'] as bool,
         isDay: map['isDay'] as bool,
         precipitationMillimeters: (map['precipitationMillimeters'] as num).toDouble(),
-        cloudCoverPercent: (map['cloudCoverPercent'] as num).toDouble(),
-        pressureMsl: (map['pressureMsl'] as num).toDouble(),
         windSpeedKmh: (map['windSpeedKmh'] as num).toDouble(),
         windDirectionDegrees: (map['windDirectionDegrees'] as num).toDouble(),
-        windGustsKmh: (map['windGustsKmh'] as num).toDouble(),
-        dewPointCelsius: (map['dewPointCelsius'] as num).toDouble(),
-        uvIndex: (map['uvIndex'] as num).toDouble(),
       );
     }).handleError((Object _) {});
   }

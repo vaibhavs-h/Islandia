@@ -81,8 +81,7 @@ final class WeatherChannel: NSObject, FlutterStreamHandler {
         name: "current",
         value: [
           "temperature_2m", "apparent_temperature", "relative_humidity_2m", "weather_code", "is_day",
-          "precipitation", "cloud_cover", "pressure_msl", "wind_speed_10m", "wind_direction_10m",
-          "wind_gusts_10m", "dew_point_2m", "uv_index",
+          "precipitation", "wind_speed_10m", "wind_direction_10m",
         ].joined(separator: ",")
       ),
       // Celsius is Open-Meteo's own default (no temperature_unit param
@@ -115,13 +114,8 @@ final class WeatherChannel: NSObject, FlutterStreamHandler {
         // sunset for that day, not a client-side clock-time guess.
         let isDay = (current["is_day"] as? NSNumber)?.intValue,
         let precipitation = (current["precipitation"] as? NSNumber)?.doubleValue,
-        let cloudCover = (current["cloud_cover"] as? NSNumber)?.doubleValue,
-        let pressure = (current["pressure_msl"] as? NSNumber)?.doubleValue,
         let windSpeed = (current["wind_speed_10m"] as? NSNumber)?.doubleValue,
-        let windDirection = (current["wind_direction_10m"] as? NSNumber)?.doubleValue,
-        let windGusts = (current["wind_gusts_10m"] as? NSNumber)?.doubleValue,
-        let dewPoint = (current["dew_point_2m"] as? NSNumber)?.doubleValue,
-        let uvIndex = (current["uv_index"] as? NSNumber)?.doubleValue
+        let windDirection = (current["wind_direction_10m"] as? NSNumber)?.doubleValue
       else { return }
 
       DispatchQueue.main.async {
@@ -133,13 +127,8 @@ final class WeatherChannel: NSObject, FlutterStreamHandler {
           "isSevere": Self.severeWeatherCodes.contains(weatherCode),
           "isDay": isDay == 1,
           "precipitationMillimeters": precipitation,
-          "cloudCoverPercent": cloudCover,
-          "pressureMsl": pressure,
           "windSpeedKmh": windSpeed,
           "windDirectionDegrees": windDirection,
-          "windGustsKmh": windGusts,
-          "dewPointCelsius": dewPoint,
-          "uvIndex": uvIndex,
         ])
       }
     }

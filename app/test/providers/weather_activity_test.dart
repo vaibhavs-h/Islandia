@@ -6,7 +6,7 @@ import 'package:islandia/providers/weather_provider.dart';
 
 /// A fully-populated, plausible snapshot with sensible defaults for every
 /// field — tests override only the ones they actually care about, rather
-/// than repeating all 13 named params in every single test.
+/// than repeating all 9 named params in every single test.
 WeatherSnapshot _snapshot({
   double temperatureCelsius = 22,
   double apparentTemperatureCelsius = 22,
@@ -15,13 +15,8 @@ WeatherSnapshot _snapshot({
   bool isSevere = false,
   bool isDay = true,
   double precipitationMillimeters = 0,
-  double cloudCoverPercent = 20,
-  double pressureMsl = 1013,
   double windSpeedKmh = 10,
   double windDirectionDegrees = 0,
-  double windGustsKmh = 15,
-  double dewPointCelsius = 12,
-  double uvIndex = 3,
 }) {
   return WeatherSnapshot(
     temperatureCelsius: temperatureCelsius,
@@ -31,13 +26,8 @@ WeatherSnapshot _snapshot({
     isSevere: isSevere,
     isDay: isDay,
     precipitationMillimeters: precipitationMillimeters,
-    cloudCoverPercent: cloudCoverPercent,
-    pressureMsl: pressureMsl,
     windSpeedKmh: windSpeedKmh,
     windDirectionDegrees: windDirectionDegrees,
-    windGustsKmh: windGustsKmh,
-    dewPointCelsius: dewPointCelsius,
-    uvIndex: uvIndex,
   );
 }
 
@@ -123,23 +113,18 @@ void main() {
       expect(find.byIcon(Icons.thunderstorm), findsOneWidget);
     });
 
-    testWidgets('shows all 7 stats across the two rows, each with its own icon', (tester) async {
+    testWidgets('shows humidity, wind (with compass direction), and precipitation, each with a caption', (tester) async {
       final activity = buildWeatherActivity(
-        _snapshot(humidityPercent: 65, windSpeedKmh: 12, windDirectionDegrees: 90, pressureMsl: 1008, precipitationMillimeters: 1.5),
+        _snapshot(humidityPercent: 65, windSpeedKmh: 12, windDirectionDegrees: 90, precipitationMillimeters: 1.5),
       );
       await pumpExpanded(tester, activity);
 
       expect(find.text('65%'), findsOneWidget);
+      expect(find.text('Humidity'), findsOneWidget);
       expect(find.text('12 km/h E'), findsOneWidget);
-      expect(find.text('1008 hPa'), findsOneWidget);
+      expect(find.text('Wind'), findsOneWidget);
       expect(find.text('1.5 mm'), findsOneWidget);
-      expect(find.byIcon(Icons.water_drop), findsWidgets);
-      expect(find.byIcon(Icons.air), findsOneWidget);
-      expect(find.byIcon(Icons.speed), findsOneWidget);
-      expect(find.byIcon(Icons.opacity), findsOneWidget);
-      expect(find.byIcon(Icons.thermostat), findsOneWidget);
-      expect(find.byIcon(Icons.cloud_outlined), findsOneWidget);
-      expect(find.byIcon(Icons.storm), findsOneWidget);
+      expect(find.text('Precipitation'), findsOneWidget);
     });
 
     testWidgets('compass direction rounds to the nearest 16-point heading', (tester) async {

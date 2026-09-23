@@ -100,33 +100,51 @@ class _WeatherCollapsed extends StatelessWidget {
   }
 }
 
-/// One stat cell in the expanded card's 2-row grid — deliberately
-/// icon-only (no caption), each icon chosen to read unambiguously on its
-/// own (a gauge for pressure, a droplet for precipitation, etc.).
+/// One stat in the expanded card's bottom row — a value with a caption
+/// underneath naming what it is, so nothing requires guessing at a glance
+/// (an earlier icon-only version was unclear: a gauge or a droplet icon
+/// alone doesn't say "pressure" or "precipitation" on its own). Divided
+/// from its neighbors by a hairline, the same idea as a stats bar in a
+/// sports score card — one clean row, not a grid of icons.
 class _WeatherStat extends StatelessWidget {
-  const _WeatherStat({required this.icon, required this.value});
+  const _WeatherStat({required this.value, required this.caption});
 
-  final IconData icon;
   final String value;
+  final String caption;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Row(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white60, size: 14),
-          const SizedBox(width: 5),
-          Flexible(
-            child: Text(
-              value,
-              style: const TextStyle(color: Colors.white, fontSize: 12.5),
-              overflow: TextOverflow.ellipsis,
-            ),
+          Text(
+            value,
+            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            caption,
+            style: const TextStyle(color: Colors.white60, fontSize: 10.5),
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
+  }
+}
+
+/// A single hairline between two [_WeatherStat]s — visually separates the
+/// row into distinct fields without needing a boxed/card look for each one.
+class _StatDivider extends StatelessWidget {
+  const _StatDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(height: 28, width: 1, color: Colors.white24);
   }
 }
 
@@ -147,24 +165,31 @@ class _WeatherExpanded extends StatelessWidget {
         'Wind ${snapshot.windSpeedKmh.round()} kilometers per hour from the ${_compassDirection(snapshot.windDirectionDegrees)}.';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 6),
       child: Semantics(
         label: semanticLabel,
         excludeSemantics: true,
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(_iconFor(snapshot.weatherCode, isDay: snapshot.isDay), color: Colors.white, size: 36),
-                const SizedBox(width: 12),
+                Icon(_iconFor(snapshot.weatherCode, isDay: snapshot.isDay), color: Colors.white, size: 40),
+                const SizedBox(width: 14),
                 Text(
                   '$tempRounded°',
-                  style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.w600),
+                  style: const TextStyle(color: Colors.white, fontSize: 44, fontWeight: FontWeight.w600),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
+                // Flexible, not a bare Column — a long condition name
+                // ("Thunderstorm") next to a wide negative temperature
+                // ("-12°") can exceed the card's actual width; this is
+                // what expanded_layouts_overflow_test.dart's extreme-value
+                // cases caught (a real RenderFlex overflow, not a
+                // hypothetical one) before this was added.
                 Flexible(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,12 +197,12 @@ class _WeatherExpanded extends StatelessWidget {
                     children: [
                       Text(
                         condition,
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                        style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w500),
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         'Feels like $feelsLikeRounded°',
-                        style: const TextStyle(color: Colors.white60, fontSize: 12.5),
+                        style: const TextStyle(color: Colors.white60, fontSize: 13),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -185,24 +210,17 @@ class _WeatherExpanded extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Row(
               children: [
-                _WeatherStat(icon: Icons.water_drop, value: '${snapshot.humidityPercent.round()}%'),
+                _WeatherStat(value: '${snapshot.humidityPercent.round()}%', caption: 'Humidity'),
+                const _StatDivider(),
                 _WeatherStat(
-                  icon: Icons.air,
                   value: '${snapshot.windSpeedKmh.round()} km/h ${_compassDirection(snapshot.windDirectionDegrees)}',
+                  caption: 'Wind',
                 ),
-                _WeatherStat(icon: Icons.speed, value: '${snapshot.pressureMsl.round()} hPa'),
-                _WeatherStat(icon: Icons.opacity, value: '${snapshot.precipitationMillimeters.toStringAsFixed(1)} mm'),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                _WeatherStat(icon: Icons.thermostat, value: '${snapshot.dewPointCelsius.round()}° dew'),
-                _WeatherStat(icon: Icons.cloud_outlined, value: '${snapshot.cloudCoverPercent.round()}% cloud'),
-                _WeatherStat(icon: Icons.storm, value: '${snapshot.windGustsKmh.round()} km/h gust'),
+                const _StatDivider(),
+                _WeatherStat(value: '${snapshot.precipitationMillimeters.toStringAsFixed(1)} mm', caption: 'Precipitation'),
               ],
             ),
           ],
