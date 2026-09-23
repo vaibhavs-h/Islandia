@@ -7,16 +7,24 @@ import FlutterMacOS
 /// free tier (non-commercial use only — see open-meteo.com/en/terms), so
 /// this is a plain unauthenticated HTTPS GET.
 ///
-/// Location comes from LocationProvider rather than this file running its
-/// own `CLLocationManager` — this only reads the latest coordinate
-/// LocationProvider already has, on its own separate hourly cadence for
-/// re-fetching the weather API itself (conditions don't need to be
-/// re-checked as often as position does).
+/// Location comes from LocationProvider (shared with CalamityAlertChannel,
+/// see that file's own doc comment for why the fetch was pulled out into
+/// one shared owner) rather than this file running its own
+/// `CLLocationManager` — this only reads the latest coordinate LocationProvider
+/// already has, on its own separate hourly cadence for re-fetching the
+/// weather API itself (conditions don't need to be re-checked as often as
+/// position does).
 final class WeatherChannel: NSObject, FlutterStreamHandler {
   private var eventSink: FlutterEventSink?
   private var pollTimer: Timer?
   private var urlSessionTask: URLSessionDataTask?
   private var hasStartedListening = false
+
+  /// The city name for wherever the weather fetch's own coordinates came
+  /// from — held here so a poll-timer-triggered refetch (no fresh
+  /// LocationProvider callback involved) still has a name to include in
+  /// its payload, not just the listener-triggered ones.
+  private var latestPlaceName: String?
 
   /// Matches ClockActivityChannel's own poll-rate doc-comment convention:
   /// Open-Meteo has no push API, so this is necessarily polled. Once an
@@ -50,11 +58,13 @@ final class WeatherChannel: NSObject, FlutterStreamHandler {
     guard !hasStartedListening else { return nil }
     hasStartedListening = true
 
-    LocationProvider.shared.addListener { [weak self] coordinate in
+    LocationProvider.shared.addListener { [weak self] coordinate, placeName in
+      self?.latestPlaceName = placeName
       self?.fetchWeather(latitude: coordinate.latitude, longitude: coordinate.longitude)
     }
     let timer = Timer.scheduledTimer(withTimeInterval: Self.pollInterval, repeats: true) { [weak self] _ in
       guard let coordinate = LocationProvider.shared.latestCoordinate else { return }
+      self?.latestPlaceName = LocationProvider.shared.latestPlaceName
       self?.fetchWeather(latitude: coordinate.latitude, longitude: coordinate.longitude)
     }
     RunLoop.main.add(timer, forMode: .common)
@@ -81,7 +91,7 @@ final class WeatherChannel: NSObject, FlutterStreamHandler {
         name: "current",
         value: [
           "temperature_2m", "apparent_temperature", "relative_humidity_2m", "weather_code", "is_day",
-          "precipitation", "wind_speed_10m", "wind_direction_10m",
+          "uv_index", "wind_speed_10m", "wind_direction_10m",
         ].joined(separator: ",")
       ),
       // Celsius is Open-Meteo's own default (no temperature_unit param
@@ -113,7 +123,7 @@ final class WeatherChannel: NSObject, FlutterStreamHandler {
         // Meteo's own field, computed per-location from real sunrise/
         // sunset for that day, not a client-side clock-time guess.
         let isDay = (current["is_day"] as? NSNumber)?.intValue,
-        let precipitation = (current["precipitation"] as? NSNumber)?.doubleValue,
+        let uvIndex = (current["uv_index"] as? NSNumber)?.doubleValue,
         let windSpeed = (current["wind_speed_10m"] as? NSNumber)?.doubleValue,
         let windDirection = (current["wind_direction_10m"] as? NSNumber)?.doubleValue
       else { return }
@@ -126,9 +136,15 @@ final class WeatherChannel: NSObject, FlutterStreamHandler {
           "weatherCode": weatherCode,
           "isSevere": Self.severeWeatherCodes.contains(weatherCode),
           "isDay": isDay == 1,
-          "precipitationMillimeters": precipitation,
+          "uvIndex": uvIndex,
           "windSpeedKmh": windSpeed,
           "windDirectionDegrees": windDirection,
+          // May still be nil here — CLGeocoder's reverse-geocode is a
+          // separate, slower round-trip than the coordinate fix itself,
+          // so the very first weather reading after a fresh launch can
+          // legitimately arrive before a name has resolved. Dart's own
+          // side just omits the location row for that one reading.
+          "placeName": self.latestPlaceName as Any,
         ])
       }
     }

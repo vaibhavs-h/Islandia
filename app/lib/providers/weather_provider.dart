@@ -11,9 +11,10 @@ class WeatherSnapshot {
     required this.weatherCode,
     required this.isSevere,
     required this.isDay,
-    required this.precipitationMillimeters,
+    required this.uvIndex,
     required this.windSpeedKmh,
     required this.windDirectionDegrees,
+    this.placeName,
   });
 
   final double temperatureCelsius;
@@ -37,9 +38,16 @@ class WeatherSnapshot {
   /// the user's own timezone.
   final bool isDay;
 
-  final double precipitationMillimeters;
+  final double uvIndex;
   final double windSpeedKmh;
   final double windDirectionDegrees;
+
+  /// The reverse-geocoded city name for this reading's coordinates, via
+  /// CLGeocoder (LocationProvider.swift) — nil on the very first reading
+  /// after a fresh launch (a real, separate async round-trip from the
+  /// coordinate fix itself, so it can legitimately not have resolved yet)
+  /// or whenever CLGeocoder's own reverse-geocode fails for that tick.
+  final String? placeName;
 }
 
 /// Current weather (§05, Phase 3) via Open-Meteo — the app's first
@@ -62,9 +70,10 @@ class WeatherProvider {
         weatherCode: map['weatherCode'] as int,
         isSevere: map['isSevere'] as bool,
         isDay: map['isDay'] as bool,
-        precipitationMillimeters: (map['precipitationMillimeters'] as num).toDouble(),
+        uvIndex: (map['uvIndex'] as num).toDouble(),
         windSpeedKmh: (map['windSpeedKmh'] as num).toDouble(),
         windDirectionDegrees: (map['windDirectionDegrees'] as num).toDouble(),
+        placeName: map['placeName'] as String?,
       );
     }).handleError((Object _) {});
   }

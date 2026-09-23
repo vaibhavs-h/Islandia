@@ -133,6 +133,70 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('weather expanded view does not overflow (extreme cold, extreme UV, high wind)', (tester) async {
+    const snapshot = WeatherSnapshot(
+      temperatureCelsius: -12.4,
+      apparentTemperatureCelsius: -18.7,
+      humidityPercent: 100,
+      weatherCode: 96,
+      isSevere: true,
+      isDay: true,
+      uvIndex: 11.8,
+      windSpeedKmh: 128,
+      windDirectionDegrees: 337.5,
+      placeName: 'Winnipeg',
+    );
+    final activity = buildWeatherActivity(snapshot);
+
+    await pumpExpanded(tester, activity);
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('weather expanded view does not overflow (extreme heat, night, heavy rain)', (tester) async {
+    const snapshot = WeatherSnapshot(
+      temperatureCelsius: 35.2,
+      apparentTemperatureCelsius: 41.6,
+      humidityPercent: 88,
+      weatherCode: 65,
+      isSevere: true,
+      isDay: false,
+      uvIndex: 0,
+      windSpeedKmh: 6,
+      windDirectionDegrees: 202,
+      placeName: 'Port of Spain',
+    );
+    final activity = buildWeatherActivity(snapshot);
+
+    await pumpExpanded(tester, activity);
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('weather expanded view does not overflow (a genuinely long place name)', (tester) async {
+    const snapshot = WeatherSnapshot(
+      temperatureCelsius: -8.5,
+      apparentTemperatureCelsius: -15.2,
+      humidityPercent: 92,
+      weatherCode: 86,
+      isSevere: true,
+      isDay: true,
+      uvIndex: 9.4,
+      windSpeedKmh: 95,
+      windDirectionDegrees: 315,
+      // A real, unusually long CLGeocoder-plausible locality name —
+      // deliberately picked to stress the Flexible/ellipsis handling on
+      // the new location row, not just the condition/feels-like text
+      // that was already covered.
+      placeName: 'Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch',
+    );
+    final activity = buildWeatherActivity(snapshot);
+
+    await pumpExpanded(tester, activity);
+
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('weather expanded view does not overflow (cloudy — the drifting second-cloud layer)', (tester) async {
     const snapshot = WeatherSnapshot(
       temperatureCelsius: 18,
@@ -141,7 +205,7 @@ void main() {
       weatherCode: 3,
       isSevere: false,
       isDay: true,
-      precipitationMillimeters: 0,
+      uvIndex: 4,
       windSpeedKmh: 15,
       windDirectionDegrees: 45,
     );
@@ -160,7 +224,7 @@ void main() {
       weatherCode: 48,
       isSevere: false,
       isDay: true,
-      precipitationMillimeters: 0.2,
+      uvIndex: 1,
       windSpeedKmh: 3,
       windDirectionDegrees: 270,
     );

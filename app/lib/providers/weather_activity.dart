@@ -339,9 +339,12 @@ class _WeatherExpanded extends StatelessWidget {
     final condition = _conditionFor(snapshot.weatherCode);
 
     final semanticLabel =
-        '$tempRounded degrees, $condition, feels like $feelsLikeRounded degrees. '
+        '$tempRounded degrees, $condition'
+        '${snapshot.placeName != null ? ', ${snapshot.placeName}' : ''}'
+        ', feels like $feelsLikeRounded degrees. '
         '${snapshot.humidityPercent.round()} percent humidity. '
-        'Wind ${snapshot.windSpeedKmh.round()} kilometers per hour from the ${_compassDirection(snapshot.windDirectionDegrees)}.';
+        'Wind ${snapshot.windSpeedKmh.round()} kilometers per hour from the ${_compassDirection(snapshot.windDirectionDegrees)}. '
+        'UV index ${snapshot.uvIndex.round()}.';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 8, 14, 6),
@@ -379,6 +382,27 @@ class _WeatherExpanded extends StatelessWidget {
                         style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w500),
                         overflow: TextOverflow.ellipsis,
                       ),
+                      // Only rendered once CLGeocoder has actually
+                      // resolved a name (LocationProvider.swift) — omitted
+                      // entirely rather than showing a placeholder for the
+                      // brief window right after a fresh launch where the
+                      // coordinate fix has arrived but the separate
+                      // reverse-geocode round-trip hasn't yet.
+                      if (snapshot.placeName != null)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(LucideIcons.mapPin, color: Colors.white60, size: 11),
+                            const SizedBox(width: 3),
+                            Flexible(
+                              child: Text(
+                                snapshot.placeName!,
+                                style: const TextStyle(color: Colors.white60, fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       Text(
                         'Feels like $feelsLikeRounded°',
                         style: const TextStyle(color: Colors.white60, fontSize: 13),
@@ -399,7 +423,7 @@ class _WeatherExpanded extends StatelessWidget {
                   caption: 'Wind',
                 ),
                 const _StatDivider(),
-                _WeatherStat(value: '${snapshot.precipitationMillimeters.toStringAsFixed(1)} mm', caption: 'Precipitation'),
+                _WeatherStat(value: 'UV ${snapshot.uvIndex.round()}', caption: 'UV Index'),
               ],
             ),
           ],

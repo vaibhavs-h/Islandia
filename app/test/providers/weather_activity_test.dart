@@ -7,7 +7,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// A fully-populated, plausible snapshot with sensible defaults for every
 /// field — tests override only the ones they actually care about, rather
-/// than repeating all 9 named params in every single test.
+/// than repeating all 10 named params in every single test. placeName
+/// defaults to null (unresolved), matching the real first-reading-after-
+/// launch case, not an arbitrary placeholder city.
 WeatherSnapshot _snapshot({
   double temperatureCelsius = 22,
   double apparentTemperatureCelsius = 22,
@@ -15,9 +17,10 @@ WeatherSnapshot _snapshot({
   int weatherCode = 0,
   bool isSevere = false,
   bool isDay = true,
-  double precipitationMillimeters = 0,
+  double uvIndex = 3,
   double windSpeedKmh = 10,
   double windDirectionDegrees = 0,
+  String? placeName,
 }) {
   return WeatherSnapshot(
     temperatureCelsius: temperatureCelsius,
@@ -26,9 +29,10 @@ WeatherSnapshot _snapshot({
     weatherCode: weatherCode,
     isSevere: isSevere,
     isDay: isDay,
-    precipitationMillimeters: precipitationMillimeters,
+    uvIndex: uvIndex,
     windSpeedKmh: windSpeedKmh,
     windDirectionDegrees: windDirectionDegrees,
+    placeName: placeName,
   );
 }
 
@@ -106,6 +110,21 @@ void main() {
       expect(find.byIcon(LucideIcons.cloudRain), findsWidgets);
     });
 
+    testWidgets('shows the resolved place name, with a pin icon, between the condition and feels-like', (tester) async {
+      final activity = buildWeatherActivity(_snapshot(placeName: 'Seattle'));
+      await pumpExpanded(tester, activity);
+
+      expect(find.text('Seattle'), findsOneWidget);
+      expect(find.byIcon(LucideIcons.mapPin), findsOneWidget);
+    });
+
+    testWidgets('omits the location row entirely when the place name has not resolved yet', (tester) async {
+      final activity = buildWeatherActivity(_snapshot(placeName: null));
+      await pumpExpanded(tester, activity);
+
+      expect(find.byIcon(LucideIcons.mapPin), findsNothing);
+    });
+
     testWidgets('a thunderstorm code maps to the thunderstorm icon and label', (tester) async {
       final activity = buildWeatherActivity(_snapshot(weatherCode: 95, isSevere: true));
       await pumpExpanded(tester, activity);
@@ -114,9 +133,9 @@ void main() {
       expect(find.byIcon(LucideIcons.cloudLightning), findsOneWidget);
     });
 
-    testWidgets('shows humidity, wind (with compass direction), and precipitation, each with a caption', (tester) async {
+    testWidgets('shows humidity, wind (with compass direction), and UV index, each with a caption', (tester) async {
       final activity = buildWeatherActivity(
-        _snapshot(humidityPercent: 65, windSpeedKmh: 12, windDirectionDegrees: 90, precipitationMillimeters: 1.5),
+        _snapshot(humidityPercent: 65, windSpeedKmh: 12, windDirectionDegrees: 90, uvIndex: 7.6),
       );
       await pumpExpanded(tester, activity);
 
@@ -124,8 +143,15 @@ void main() {
       expect(find.text('Humidity'), findsOneWidget);
       expect(find.text('12 km/h E'), findsOneWidget);
       expect(find.text('Wind'), findsOneWidget);
-      expect(find.text('1.5 mm'), findsOneWidget);
-      expect(find.text('Precipitation'), findsOneWidget);
+      expect(find.text('UV 8'), findsOneWidget);
+      expect(find.text('UV Index'), findsOneWidget);
+    });
+
+    testWidgets('shows "UV 0" at night, not a blank value or a hidden stat', (tester) async {
+      final activity = buildWeatherActivity(_snapshot(isDay: false, uvIndex: 0));
+      await pumpExpanded(tester, activity);
+
+      expect(find.text('UV 0'), findsOneWidget);
     });
 
     testWidgets('compass direction rounds to the nearest 16-point heading', (tester) async {
