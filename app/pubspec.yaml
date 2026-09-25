@@ -1,5 +1,5 @@
 name: islandia
-description: "A new Flutter project."
+description: "The Dynamic Island for your Mac — Now Playing, Battery, Weather, and File Handoff in one Always Visible Notch-Side Surface"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

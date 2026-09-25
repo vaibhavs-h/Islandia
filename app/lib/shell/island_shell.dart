@@ -26,6 +26,8 @@ import '../providers/now_playing_provider.dart';
 import '../providers/now_playing_visibility_gate.dart';
 import '../providers/screen_capture_activity.dart';
 import '../providers/screen_capture_activity_provider.dart';
+import '../providers/shelf_activity.dart';
+import '../providers/shelf_provider.dart';
 import '../providers/weather_activity.dart';
 import '../providers/weather_provider.dart';
 import '../providers/wifi_connection_activity.dart';
@@ -216,6 +218,7 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
   StreamSubscription<WiFiConnectionEvent>? _wifiConnectionSubscription;
   StreamSubscription<WeatherSnapshot>? _weatherSubscription;
   StreamSubscription<CalamityAlert>? _calamityAlertSubscription;
+  StreamSubscription<ShelfSnapshot>? _shelfSubscription;
 
   /// USGS/GDACS keep an event in their own feed for a while (e.g. an
   /// earthquake stays in USGS's "past day" feed for 24h), so native
@@ -313,6 +316,7 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
     _wifiConnectionSubscription?.cancel();
     _weatherSubscription?.cancel();
     _calamityAlertSubscription?.cancel();
+    _shelfSubscription?.cancel();
     super.dispose();
   }
 
@@ -405,9 +409,60 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
       }
     });
 
+    // Native already hands over one complete reading per state change (see
+    // ShelfSnapshot's own doc comment) — nothing to diff, just register or
+    // remove on every tick. `shelf` tier always wins outright, so there's
+    // no priority contest to referee the way _refreshClockTierActivity
+    // has to for the shared clock slot.
+    //
+    // An empty snapshot with a real ShelfEmptyReason (a successful
+    // drag-out, or dropping the item back onto the island to delete it —
+    // see ShelfSnapshot.emptyReason's own doc comment) does NOT remove the
+    // activity immediately: shelf_activity.dart's own exit animation needs
+    // to actually play against real, still-registered content first (see
+    // buildShelfActivity's own doc comment for the full sequencing) — this
+    // listener only calls _finishShelfExit (the actual removal + collapse)
+    // once that animation's own onExitAnimationComplete callback fires. A
+    // reason-less empty snapshot (launch, or an explicit ShelfControl.clear
+    // with nothing worth animating) has nothing to wait on, so it still
+    // removes immediately, same as before.
+    _shelfSubscription = ShelfProvider.updates.listen((snapshot) {
+      if (snapshot.isEmpty && snapshot.emptyReason == null) {
+        _finishShelfExit();
+      } else {
+        _stack.register(buildShelfActivity(snapshot, onExitAnimationComplete: _finishShelfExit));
+      }
+    });
+
     if (!mounted) return;
     setState(() => _screen = screen);
     await _applyFrame(animated: false);
+  }
+
+  /// The actual "the Shelf is really gone now" step — removes it from the
+  /// stack and, if it was the thing actually expanded, collapses the
+  /// island. Called either immediately (a reason-less empty snapshot has
+  /// nothing to wait on) or once shelf_activity.dart's own exit animation
+  /// finishes playing (see the Shelf listener's own doc comment, just
+  /// above, for the full sequencing).
+  ///
+  /// Collapsing specifically on the Shelf emptying while it was expanded —
+  /// a successful drag-out (the item just moved to wherever it was
+  /// dropped) or a delete both mean there's nothing left worth looking at,
+  /// so lingering expanded reads as stuck rather than intentional
+  /// (confirmed live as a real gap). Guarded on the Shelf specifically
+  /// still being _stack.top (not just "is the island expanded at all"):
+  /// if something else already preempted the Shelf's own expanded view by
+  /// the time this runs (in practice nothing outranks `shelf`, but a
+  /// stale/out-of-order call racing a fresh drag-in is still worth not
+  /// acting on blindly), this shouldn't collapse whatever's showing now on
+  /// the Shelf's behalf.
+  void _finishShelfExit() {
+    final wasShowingShelf = _stack.top?.id == 'shelf';
+    _stack.remove('shelf');
+    if (wasShowingShelf && (_state == LifecycleState.expanded || _state == LifecycleState.interactive)) {
+      _collapse();
+    }
   }
 
   /// Diffs successive battery-list snapshots into connect/disconnect
@@ -665,8 +720,22 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
   // pill, so reading a longer countdown or scanning several lap rows never
   // gets cut off mid-read; leaving resumes the normal 5s countdown fresh,
   // same as any other "still relevant" interaction already does.
+  //
+  // The Shelf is the one exception, per the confirmed spec ("hovering over
+  // the island will open the expanded view"): while it holds the top slot,
+  // hover itself drives collapsed/hover straight to expanded — there is no
+  // separate tap step (see _handleTap's own guard turning tap-to-expand off
+  // entirely for this tier). Once expanded, it behaves exactly like every
+  // other activity from here on: the same 5s-after-losing-hover
+  // auto-collapse timer, the same instant-collapse on an outside click.
   void _handleHoverEnter() {
     _isHovering = true;
+    if (_stack.top?.priority == ActivityPriority.shelf) {
+      if (_state == LifecycleState.collapsed || _state == LifecycleState.hover) {
+        _expand();
+      }
+      return;
+    }
     if (_state == LifecycleState.collapsed) {
       setState(() => _state = LifecycleState.hover);
     }
@@ -682,17 +751,22 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
   }
 
   void _handleTap() {
-    // A ringing alarm/timer already owns the surface until the real
-    // external event resolves — see clock_alarm_activity.dart's own doc
-    // comment.
-    if (_stack.top?.priority == ActivityPriority.ringingEvent) return;
+    // Neither tier responds to the normal tap-to-expand gesture: a ringing
+    // alarm/timer already owns the surface until the real external event
+    // resolves (see clock_alarm_activity.dart's own doc comment), and the
+    // Shelf has its own separate hover-to-see-detail / drag-to-remove
+    // interaction model instead of tap-to-expand (see _handleHoverEnter and
+    // ShelfChannel.swift).
+    final topPriority = _stack.top?.priority;
+    if (topPriority == ActivityPriority.ringingEvent || topPriority == ActivityPriority.shelf) return;
     if (_state == LifecycleState.collapsed || _state == LifecycleState.hover) {
       _expand();
     }
   }
 
-  /// The shared expand sequence — factored out of _handleTap so it can be
-  /// triggered from more than one gesture without duplicating it.
+  /// The shared expand sequence — factored out of _handleTap so
+  /// _handleHoverEnter's Shelf-only hover-to-expand case (see its own doc
+  /// comment) can trigger the exact same transition without duplicating it.
   void _expand() {
     setState(() => _state = LifecycleState.expanded);
     // Expanded is "deliberate enough" to take keyboard focus for its own

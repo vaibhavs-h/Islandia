@@ -23,4 +23,26 @@ class IslandMotion {
   /// content swap, so this is its own, shorter fade rather than reusing
   /// [expansionDuration]. See IslandShell._crossFadedContent.
   static const Duration activitySwapDuration = Duration(milliseconds: 350);
+
+  /// The Shelf's own arrival entrance (scale-and-settle) — see
+  /// shelf_activity.dart's _ArrivalAnimated. Deliberately allowed a touch of
+  /// overshoot ([shelfArrivalCurve]), unlike every other motion constant
+  /// here: an item *landing* with a little weight reads as more premium
+  /// than a plain ease-in, and this is the one Shelf moment confirmed as
+  /// wanting exactly that (a scale-up-then-settle, not a flat fade) rather
+  /// than matching the rest of the app's deliberately bounce-free house
+  /// style.
+  static const Duration shelfArrivalDuration = Duration(milliseconds: 450);
+  static const Curve shelfArrivalCurve = Curves.easeOutBack;
+
+  /// The Shelf's two exit transitions — a successful drag-out (calmer,
+  /// confirms with a brief checkmark) vs. a delete (snappier, sharper) —
+  /// see shelf_activity.dart's _ShelfExitAnimated. island_shell.dart's own
+  /// Shelf listener waits exactly one of these durations (matching
+  /// [emptyReason]) before actually removing the activity from the stack,
+  /// so the animation has time to play out on real, still-registered
+  /// content instead of being cut off by an immediate removal.
+  static const Duration shelfDragOutExitDuration = Duration(milliseconds: 550);
+  static const Duration shelfDeleteExitDuration = Duration(milliseconds: 260);
+  static const Curve shelfExitCurve = Curves.easeInCubic;
 }

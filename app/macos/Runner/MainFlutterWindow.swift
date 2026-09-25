@@ -8,7 +8,16 @@ import QuartzCore
 /// keeps clicking it from stealing focus from whatever app the user is in;
 /// `isInteractive` is the one escape hatch, flipped from Dart when the Island
 /// genuinely needs keyboard/text input (see IslandWindowChannel).
-class MainFlutterWindow: NSWindow {
+///
+/// Subclasses `NSPanel`, not `NSWindow` — `.nonactivatingPanel` is
+/// documented as valid only on `NSPanel` (confirmed against Apple's own
+/// docs and multiple independent reports of the exact
+/// "NSWindow does not support nonactivating panel styleMask 0x80" error
+/// this produced on NSWindow, including a tracked Electron issue hitting
+/// the identical failure for the identical reason). This was the real
+/// root cause of an earlier intermittent "window fails to render" bug —
+/// AppKit was silently rejecting the styleMask on the wrong base class.
+class MainFlutterWindow: NSPanel, NSDraggingDestination {
   private var flutterViewController: FlutterViewController!
   private let batteryStreamHandler = BatteryStreamHandler()
   private let nowPlayingChannel = NowPlayingChannel()
@@ -22,6 +31,7 @@ class MainFlutterWindow: NSWindow {
   private let clockActivityChannel = ClockActivityChannel()
   private let weatherChannel = WeatherChannel()
   private let calamityAlertChannel = CalamityAlertChannel()
+  private let shelfChannel = ShelfChannel()
 
   override func awakeFromNib() {
     flutterViewController = FlutterViewController()
@@ -49,6 +59,7 @@ class MainFlutterWindow: NSWindow {
     clockActivityChannel.register(on: flutterViewController)
     weatherChannel.register(on: flutterViewController)
     calamityAlertChannel.register(on: flutterViewController)
+    shelfChannel.register(on: flutterViewController)
 
     configureAsIslandPanel()
 
@@ -70,6 +81,27 @@ class MainFlutterWindow: NSWindow {
     contentView?.layer?.backgroundColor = NSColor.clear.cgColor
 
     positionUnderNotch()
+
+    // The Shelf's own drag destination — confirmed live that this exact
+    // window configuration receives the full NSDraggingDestination
+    // lifecycle with no friction (see ShelfChannel's own doc comment).
+    registerForDraggedTypes([.fileURL, .rtf, .html, .string])
+  }
+
+  // MARK: - NSDraggingDestination — each method is a 1-line forward to
+  // ShelfChannel, which owns all the real logic. See ShelfChannel's own
+  // doc comment for why the protocol conformance has to live here at all.
+
+  func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+    shelfChannel.draggingEntered(sender)
+  }
+
+  func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+    shelfChannel.draggingUpdated(sender)
+  }
+
+  func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+    shelfChannel.performDragOperation(sender)
   }
 
   /// A rough first-paint fallback before Dart's own bootstrap fetches real
