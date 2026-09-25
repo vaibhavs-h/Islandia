@@ -12,8 +12,20 @@ import 'duration_format.dart';
 enum ClockAwarenessView { stopwatch, timer }
 
 /// How close to firing a running timer has to be before it preempts a
-/// running stopwatch, even before the alarm actually sounds.
-const Duration _timerPreemptWindow = Duration(seconds: 10);
+/// running stopwatch, even before the alarm actually sounds. Not
+/// underscore-private — island_shell.dart's own
+/// stopwatch/timer/Now-Playing resolver (_resolveClockTierWinner) needs the
+/// exact same threshold for its own, separate stopwatch-contest branch,
+/// rather than silently drifting out of sync with a second hardcoded copy.
+const Duration timerPreemptWindow = Duration(seconds: 10);
+
+/// How close to firing an idle (no stopwatch running) timer has to be
+/// before it preempts Now Playing instead — a full minute rather than
+/// [timerPreemptWindow]'s 10 seconds, since there's no stopwatch here to
+/// contest for the same tight window; see island_shell.dart's own
+/// stopwatch/timer/Now-Playing resolver for the full confirmed algorithm
+/// this constant is one piece of.
+const Duration timerVsNowPlayingPreemptWindow = Duration(minutes: 1);
 
 /// Decides stopwatch vs timer for a given snapshot, given what was showing
 /// a moment ago. Kept as its own pure function (no widgets, no Activity)
@@ -24,25 +36,21 @@ const Duration _timerPreemptWindow = Duration(seconds: 10);
 /// back. Outside of that contest, whichever of the two actually has
 /// something running just shows on its own.
 ///
-/// [wasShowing] only matters while a timer is ringing: the plist alone
-/// cannot tell "still ringing" apart from "already dismissed" (confirmed
-/// live — see ClockAlarmRingingWatcher's doc comment), so
-/// [ClockAwarenessSnapshot.isAlarmRinging] is trusted as the sole source of
-/// truth for that transition rather than re-deriving it from remaining time.
+/// [wasShowing] only matters for the ordinary (non-ringing) handback: once
+/// a timer that won the stopwatch contest actually stops being soonest (it
+/// was cancelled, or a fresh shorter timer was started), a running
+/// stopwatch reclaims the view on the very next tick rather than lingering.
+///
+/// A ringing timer is deliberately NOT this function's concern at all
+/// anymore — see [buildTimerRingingActivity]'s doc comment: island_shell.dart
+/// pulls that case out into its own `ringingEvent`-tier activity before this
+/// function is ever consulted, so [ClockAwarenessSnapshot.isAlarmRinging]
+/// (confusingly named — the *timer* ringing flag) plays no role here.
 ClockAwarenessView? selectClockAwarenessView(ClockAwarenessSnapshot snapshot, ClockAwarenessView? wasShowing) {
   final soonest = snapshot.soonest;
   final hasStopwatch = snapshot.stopwatch != null;
-  final timerInPreemptWindow = soonest != null && soonest.remaining <= _timerPreemptWindow;
+  final timerInPreemptWindow = soonest != null && soonest.remaining <= timerPreemptWindow;
 
-  // isAlarmRinging implies a timer really did just fire — native
-  // guarantees soonest stays non-null for as long as ringing does (see
-  // ClockActivityChannel.emit()'s own doc comment) — but this only ever
-  // renders that fact if there's actually a timer to render alongside it.
-  // A bug here once registered the timer view with an empty timer list,
-  // leaving the pill occupying the top slot while rendering nothing (a
-  // plain black pill, no crash) instead of falling through and letting a
-  // lower-priority activity show through.
-  if (snapshot.isAlarmRinging && soonest != null) return ClockAwarenessView.timer;
   if (wasShowing == ClockAwarenessView.timer && soonest != null && !hasStopwatch) return ClockAwarenessView.timer;
 
   if (hasStopwatch) {
@@ -56,6 +64,14 @@ ClockAwarenessView? selectClockAwarenessView(ClockAwarenessSnapshot snapshot, Cl
 /// doing" fact, not two independent things competing for the stack, so a
 /// stopwatch↔timer handback is a content swap within this activity rather
 /// than one activity's priority beating another's.
+///
+/// `clock` tier — NOT its own fixed slot; island_shell.dart's own resolver
+/// (see its doc comment) decides whether THIS activity or Now Playing
+/// actually gets registered at this tier on any given tick, since Now
+/// Playing can legitimately outrank an idle-countdown timer. A genuinely
+/// *ringing* timer is a different, higher-tier activity entirely — see
+/// [buildTimerRingingActivity] below — this one is only ever the live
+/// countdown/stopwatch view, never the ringing state itself.
 ///
 /// [generation] is folded into the id — see island_shell.dart's
 /// _refreshClockAwarenessActivity for why a fixed id alone would never
@@ -87,7 +103,7 @@ Activity buildClockAwarenessActivity(
 }) {
   return Activity(
     id: 'clock-awareness-$generation',
-    priority: ActivityPriority.p3Ambient,
+    priority: ActivityPriority.clock,
     collapsedBuilder: (context, state) => _ClockAwarenessCollapsed(snapshot: snapshot, view: view),
     expandedBuilder: (context, state) => _ClockAwarenessExpanded(
       snapshot: snapshot,
@@ -96,6 +112,31 @@ Activity buildClockAwarenessActivity(
       onTimerCancelRequested: onTimerCancelRequested,
       onTimerResumeRequested: onTimerResumeRequested,
     ),
+  );
+}
+
+/// A timer that has actually fired, still ringing, unresolved — split out
+/// from [buildClockAwarenessActivity] into its own `ringingEvent`-tier
+/// activity (the same tier buildAlarmRingingActivity uses, see that
+/// function's own doc comment for why the two share a tier) rather than
+/// staying folded into the ordinary `clock`-tier countdown view: a ringing
+/// timer should preempt an Alert or Now Playing the exact same way a
+/// ringing alarm does, not just win a Timer-vs-Stopwatch-vs-Now-Playing
+/// contest at the ordinary Clock tier.
+///
+/// No `isTransient`/`autoDismissAfter` — same reasoning as the ringing
+/// alarm: its lifetime is tied to the real ringing state
+/// (island_shell.dart registers it the instant
+/// ClockAwarenessSnapshot.isAlarmRinging goes true — note this is the
+/// *timer* ringing flag, confusingly named for historical reasons the
+/// snapshot's own doc comment explains — and removes it the instant that
+/// goes false again), not a fixed timeout.
+Activity buildTimerRingingActivity(ClockAwarenessSnapshot snapshot) {
+  return Activity(
+    id: 'timer-ringing',
+    priority: ActivityPriority.ringingEvent,
+    collapsedBuilder: (context, state) => _ClockAwarenessCollapsed(snapshot: snapshot, view: ClockAwarenessView.timer),
+    expandedBuilder: (context, state) => _ClockAwarenessExpanded(snapshot: snapshot, view: ClockAwarenessView.timer),
   );
 }
 

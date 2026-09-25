@@ -12,13 +12,14 @@ import 'weather_provider.dart';
 /// engine silently updating the first one in place.
 int _severeWeatherNotificationSequence = 0;
 
-/// Current conditions (§05, Phase 3) — P3 ambient, persistent, same shape
-/// as buildBatteryActivity: a normal resting background state, always
-/// available, updated in place via the engine's register()-by-id path.
+/// Current conditions (§05, Phase 3) — Dashboard tier, persistent, same
+/// shape as buildBatteryActivity: a normal resting background state,
+/// always available, updated in place via the engine's register()-by-id
+/// path.
 Activity buildWeatherActivity(WeatherSnapshot snapshot) {
   return Activity(
     id: 'weather',
-    priority: ActivityPriority.p3Ambient,
+    priority: ActivityPriority.dashboard,
     collapsedBuilder: (context, state) => _WeatherCollapsed(snapshot: snapshot),
     expandedBuilder: (context, state) => _WeatherExpanded(snapshot: snapshot),
   );
@@ -26,14 +27,14 @@ Activity buildWeatherActivity(WeatherSnapshot snapshot) {
 
 /// A self-defined "severe" reading (see WeatherChannel.swift's
 /// severeWeatherCodes — Open-Meteo itself has no real alerts endpoint) —
-/// P2 important, transient, same shape as buildWiFiConnectionActivity:
+/// Alert tier, transient, same shape as buildWiFiConnectionActivity:
 /// announces itself once and ages out after 5s via the engine's own
 /// timeout handling.
 Activity buildSevereWeatherAlertActivity(WeatherSnapshot snapshot) {
   _severeWeatherNotificationSequence++;
   return Activity(
     id: 'severe-weather-$_severeWeatherNotificationSequence',
-    priority: ActivityPriority.p2Important,
+    priority: ActivityPriority.alert,
     isTransient: true,
     autoDismissAfter: const Duration(seconds: 5),
     collapsedBuilder: (context, state) => _SevereWeatherAlertContent(snapshot: snapshot, expanded: false),

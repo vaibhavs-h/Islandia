@@ -12,7 +12,7 @@ import 'package:islandia/shell/privacy_indicator.dart';
 Activity _activity() {
   return Activity(
     id: 'test-activity',
-    priority: ActivityPriority.p2Important,
+    priority: ActivityPriority.alert,
     collapsedBuilder: (context, state) => const SizedBox.shrink(),
     expandedBuilder: (context, state) => const SizedBox.shrink(),
   );

@@ -18,7 +18,7 @@ Activity buildWiFiConnectionActivity({required String networkName, required bool
   _wifiNotificationSequence++;
   return Activity(
     id: 'wifi-connection-$_wifiNotificationSequence',
-    priority: ActivityPriority.p2Important,
+    priority: ActivityPriority.alert,
     isTransient: true,
     autoDismissAfter: const Duration(seconds: 5),
     // Collapsed and expanded used to share one widget instance at one

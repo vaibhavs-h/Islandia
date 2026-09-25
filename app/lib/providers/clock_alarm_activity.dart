@@ -23,11 +23,10 @@ int _alarmNotificationSequence = 0;
 enum AlarmChangeKind { created, deleted, edited, enabled, disabled }
 
 /// An alarm being created, deleted, edited, or toggled on/off in the
-/// macOS Clock app — same P2 important, transient, 5s-auto-dismiss shape
-/// as the Wi-Fi/Bluetooth connection alerts (see
-/// wifi_connection_activity.dart), since this is the same kind of thing:
-/// a short-lived fact about something that just happened, not an
-/// ongoing state to keep displaying.
+/// macOS Clock app — same Alert tier, transient, 5s-auto-dismiss shape as
+/// the Wi-Fi/Bluetooth connection alerts (see wifi_connection_activity.dart),
+/// since this is the same kind of thing: a short-lived fact about
+/// something that just happened, not an ongoing state to keep displaying.
 ///
 /// Detection itself lives in island_shell.dart, diffing successive
 /// ClockAwarenessSnapshot.alarms lists the same way Bluetooth
@@ -38,7 +37,7 @@ Activity buildAlarmAlertActivity({required ClockAlarm alarm, required AlarmChang
   _alarmNotificationSequence++;
   return Activity(
     id: 'alarm-alert-$_alarmNotificationSequence',
-    priority: ActivityPriority.p2Important,
+    priority: ActivityPriority.alert,
     isTransient: true,
     autoDismissAfter: const Duration(seconds: 5),
     collapsedBuilder: (context, state) => _AlarmAlertContent(alarm: alarm, kind: kind, expanded: false),
@@ -53,11 +52,14 @@ Activity buildAlarmAlertActivity({required ClockAlarm alarm, required AlarmChang
 /// ClockAwarenessSnapshot.isScheduledAlarmRinging goes true and removes
 /// it the instant that goes false again), not a fixed timeout.
 ///
-/// `p1Immediate` — the same tier the shell's own dark-red backdrop and
-/// "priority already owns the surface" guard exist for (see
-/// island_shell.dart) — since a ringing alarm is exactly that kind of
-/// thing: it should preempt whatever else is showing, the same way an
-/// incoming call would, not queue politely behind Now Playing or battery.
+/// `p4RingingEvent` — the same tier a completed/ringing timer also uses
+/// (see clock_awareness_activity.dart's own timer/stopwatch resolver),
+/// and the tier the shell's own dark-red backdrop and "priority already
+/// owns the surface" guard exist for (see island_shell.dart) — since a
+/// ringing alarm is exactly that kind of thing: it should preempt
+/// whatever else is showing, the same way an incoming call would, not
+/// queue politely behind Now Playing or battery. Below only the Shelf,
+/// which always wins regardless of what's ringing.
 ///
 /// No specific alarm name shown, deliberately — see
 /// ClockAwarenessSnapshot.isScheduledAlarmRinging's own doc comment for
@@ -67,7 +69,7 @@ Activity buildAlarmAlertActivity({required ClockAlarm alarm, required AlarmChang
 Activity buildAlarmRingingActivity() {
   return Activity(
     id: 'alarm-ringing',
-    priority: ActivityPriority.p1Immediate,
+    priority: ActivityPriority.ringingEvent,
     collapsedBuilder: (context, state) => const _AlarmRingingContent(expanded: false),
     expandedBuilder: (context, state) => const _AlarmRingingContent(expanded: true),
   );

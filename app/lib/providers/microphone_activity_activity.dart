@@ -9,7 +9,7 @@ import '../engine/activity.dart';
 Activity buildMicrophoneActivity() {
   return Activity(
     id: 'microphone-activity',
-    priority: ActivityPriority.p2Important,
+    priority: ActivityPriority.alert,
     collapsedBuilder: (context, state) => const _MicrophoneActiveContent(),
     expandedBuilder: (context, state) => const _MicrophoneActiveContent(),
   );

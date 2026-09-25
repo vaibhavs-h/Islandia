@@ -56,14 +56,22 @@ void main() {
       expect(selectClockAwarenessView(snapshot, ClockAwarenessView.stopwatch), ClockAwarenessView.timer);
     });
 
-    test('a ringing alarm holds the timer view even past the preempt window (still-ringing case)', () {
-      // The plist alone cannot tell "still ringing" apart from "dismissed"
-      // (see ClockAlarmRingingWatcher) — isAlarmRinging is the only signal
-      // trusted for this, deliberately not re-derived from remaining time.
-      // The fired timer itself is still present here — native guarantees
-      // that for as long as isAlarmRinging stays true (see
-      // ClockActivityChannel.emit()); this snapshot reflects that
-      // guarantee rather than the empty-timers shape it exists to prevent.
+    // isAlarmRinging (the timer-ringing flag) used to short-circuit this
+    // function straight to ClockAwarenessView.timer — island_shell.dart now
+    // pulls a genuinely ringing timer out into its own ringingEvent-tier
+    // activity (buildTimerRingingActivity) before this function is ever
+    // consulted, so isAlarmRinging plays no role here anymore; these two
+    // cases confirm that's really true, not just assumed.
+    test('a ringing timer with no stopwatch resolves purely on soonest/hasStopwatch, ignoring isAlarmRinging', () {
+      const snapshot = ClockAwarenessSnapshot(
+        isAlarmRinging: true,
+        timers: [ClockRunningTimer(id: 'a', remaining: Duration(seconds: 0), title: '')],
+        stopwatch: null,
+      );
+      expect(selectClockAwarenessView(snapshot, null), ClockAwarenessView.timer);
+    });
+
+    test('a ringing timer alongside a running stopwatch still preempts it purely via the ordinary preempt window', () {
       const snapshot = ClockAwarenessSnapshot(
         isAlarmRinging: true,
         timers: [ClockRunningTimer(id: 'a', remaining: Duration(seconds: 0), title: '')],
@@ -84,25 +92,6 @@ void main() {
     test('the alarm being dismissed with no stopwatch running shows nothing', () {
       const snapshot = ClockAwarenessSnapshot(isAlarmRinging: false, timers: [], stopwatch: null);
       expect(selectClockAwarenessView(snapshot, ClockAwarenessView.timer), isNull);
-    });
-
-    test('ringing with no timer to show falls back to the stopwatch rather than a blank timer view', () {
-      // Regression: native is responsible for keeping soonest non-null for
-      // as long as isAlarmRinging is true (see ClockActivityChannel's
-      // emit()), but this must never trust that blindly — a snapshot
-      // violating it once left the pill occupying the top slot while
-      // rendering nothing (see selectClockAwarenessView's own comment).
-      const snapshot = ClockAwarenessSnapshot(
-        isAlarmRinging: true,
-        timers: [],
-        stopwatch: ClockRunningStopwatch(id: 'b', elapsed: Duration(seconds: 30)),
-      );
-      expect(selectClockAwarenessView(snapshot, ClockAwarenessView.stopwatch), ClockAwarenessView.stopwatch);
-    });
-
-    test('ringing with no timer and no stopwatch to show falls back to nothing rather than a blank timer view', () {
-      const snapshot = ClockAwarenessSnapshot(isAlarmRinging: true, timers: [], stopwatch: null);
-      expect(selectClockAwarenessView(snapshot, null), isNull);
     });
   });
 

@@ -25,7 +25,7 @@ void main() {
     const alert = CalamityAlert(id: 'usgs-abc123', kind: 'earthquake', headline: 'M5.2 earthquake', place: 'Near Tokyo, Japan', source: 'usgs');
     final activity = buildCalamityAlertActivity(alert);
 
-    expect(activity.priority, ActivityPriority.p2Important);
+    expect(activity.priority, ActivityPriority.alert);
     expect(activity.isTransient, isTrue);
     expect(activity.autoDismissAfter, const Duration(seconds: 5));
   });

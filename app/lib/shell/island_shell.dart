@@ -35,6 +35,43 @@ import 'motion.dart';
 import 'pill_geometry.dart';
 import 'privacy_indicator.dart';
 
+/// Which of {Stopwatch, Timer, Now Playing} — if any — currently holds the
+/// shared `clock` tier slot. See [resolveClockTierWinner] for the decision
+/// and _IslandShellState._refreshClockTierActivity for how a winner turns
+/// into an actual stack registration.
+enum ClockTierWinner { stopwatch, timer, nowPlaying, none }
+
+/// Pure decision function for [ClockTierWinner] — kept free of widgets and
+/// state (just like clock_awareness_activity.dart's own
+/// selectClockAwarenessView) so the exact user-confirmed algorithm is
+/// unit-testable without pumping a widget tree.
+///
+/// The algorithm, verbatim from what was confirmed:
+/// - Stopwatch running: Stopwatch wins, UNLESS a timer is running with
+///   ≤10s left ([timerPreemptWindow] in clock_awareness_activity.dart) —
+///   Now Playing is irrelevant in this entire branch, confirmed explicitly.
+/// - Stopwatch not running: a timer with ≤1 minute left
+///   ([timerVsNowPlayingPreemptWindow]) wins; else Now Playing wins if
+///   visible; else an idle running timer still wins by default (nothing
+///   else contesting); else no winner (Dashboard shows through).
+ClockTierWinner resolveClockTierWinner({
+  required bool hasStopwatch,
+  required Duration? timerRemaining,
+  required bool nowPlayingVisible,
+}) {
+  final hasTimer = timerRemaining != null;
+
+  if (hasStopwatch) {
+    final timerInPreemptWindow = hasTimer && timerRemaining <= timerPreemptWindow;
+    return timerInPreemptWindow ? ClockTierWinner.timer : ClockTierWinner.stopwatch;
+  }
+
+  if (hasTimer && timerRemaining <= timerVsNowPlayingPreemptWindow) return ClockTierWinner.timer;
+  if (nowPlayingVisible) return ClockTierWinner.nowPlaying;
+  if (hasTimer) return ClockTierWinner.timer;
+  return ClockTierWinner.none;
+}
+
 /// The Island itself: one collapsed↔hover↔expanded↔interactive↔collapse
 /// state machine (§00), rendering whatever the Activity Stack's top entry
 /// currently is. This is the Phase 1 spike target — proving the shell and
@@ -60,7 +97,7 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
   final FocusNode _focusNode = FocusNode(debugLabel: 'IslandShell');
   late final NowPlayingVisibilityGate _nowPlayingVisibility = NowPlayingVisibilityGate(
     hideAfterPaused: const Duration(seconds: 15),
-    onHide: _refreshNowPlayingActivity,
+    onHide: _refreshClockTierActivity,
   );
 
   // The native window resize follows an ease-out curve — fast growth early,
@@ -131,8 +168,15 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
   StreamSubscription<bool>? _cameraActivitySubscription;
   StreamSubscription<bool>? _screenCaptureActivitySubscription;
   StreamSubscription<ClockAwarenessSnapshot>? _clockAwarenessSubscription;
+  /// Null until the first snapshot arrives — needed alongside
+  /// [_lastClockAwarenessView] because the Now-Playing-triggered half of
+  /// _refreshClockTierActivity has to re-run the Stopwatch/Timer/Now-Playing
+  /// decision without a fresh ClockAwarenessSnapshot of its own to hand in
+  /// (Now Playing updates arrive on a completely separate stream — see
+  /// _refreshClockTierActivity's own doc comment).
+  ClockAwarenessSnapshot? _lastClockAwarenessSnapshot;
   /// Null until the first snapshot decides it — see
-  /// _refreshClockAwarenessActivity for why this (not just the id string
+  /// _refreshClockTierActivity for why this (not just the id string
   /// alone) is what decides whether a fresh registration counts as a real
   /// view change.
   ClockAwarenessView? _lastClockAwarenessView;
@@ -164,9 +208,9 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
   /// pausing a timer holds *that timer's own view* on screen for as long
   /// as the expanded card stays open, not merely for a couple of seconds
   /// before a stopwatch is allowed to reclaim the slot on its own real
-  /// merits. _refreshClockAwarenessActivity uses this flag to override
-  /// *what view shows* while it's true (see its own doc comment) — not
-  /// just whether the widget's own last frame survives, which is
+  /// merits. _refreshClockTierActivity uses this flag to override *what
+  /// view shows* while it's true (see its own doc comment) — not just
+  /// whether the widget's own last frame survives, which is
   /// _TimerExpanded's own separate, local concern (see its doc comment).
   bool _timerHeldByPause = false;
   StreamSubscription<WiFiConnectionEvent>? _wifiConnectionSubscription;
@@ -283,14 +327,14 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
     // fake-demo-vs-Battery race was.
     _nowPlayingSubscription = NowPlayingProvider.updates.listen((snapshot) {
       _lastNowPlaying = snapshot;
-      _refreshNowPlayingActivity();
+      _refreshClockTierActivity();
     });
     // A second, independent provider (CoreAudio) — only relevant to
     // re-render Now Playing's "via AirPods Pro" line, never gates whether
     // Now Playing itself is registered.
     _audioRouteSubscription = AudioRouteProvider.updates.listen((route) {
       _lastAudioRoute = route;
-      _refreshNowPlayingActivity();
+      _refreshClockTierActivity();
     });
 
     _batterySubscription = BatteryProvider.updates.listen(
@@ -331,7 +375,12 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
     _cameraActivitySubscription = CameraActivityProvider.updates.listen(_cameraIndicator.handle);
     _screenCaptureActivitySubscription = ScreenCaptureActivityProvider.updates.listen(_screenCaptureIndicator.handle);
 
-    _clockAwarenessSubscription = ClockAwarenessProvider.updates.listen(_refreshClockAwarenessActivity);
+    _clockAwarenessSubscription = ClockAwarenessProvider.updates.listen((snapshot) {
+      _lastClockAwarenessSnapshot = snapshot;
+      _refreshRingingTimerActivity(snapshot);
+      _detectAlarmChanges(snapshot.alarms);
+      _refreshClockTierActivity();
+    });
 
     // Same discrete-event shape as BluetoothClassicProvider above — native
     // already hands over distinct join/leave events, nothing to diff here.
@@ -464,96 +513,120 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
     return now.difference(scheduledToday).abs() <= const Duration(minutes: 1);
   }
 
-  /// Now Playing's registration is gated on [_lastNowPlaying] plus the
-  /// paused-hide hysteresis below — audio-route updates just refresh what's
-  /// already showing, they never cause Now Playing to appear or disappear
-  /// on their own.
-  void _refreshNowPlayingActivity() {
-    final snapshot = _lastNowPlaying;
-    if (snapshot == null) {
-      _nowPlayingVisibility.reset();
-      _stack.remove('now-playing');
-      return;
+  /// A plain register/remove, not diffed against a remembered previous value
+  /// the way _detectAlarmChanges is — buildAlarmRingingActivity and
+  /// buildTimerRingingActivity both return the exact same fixed-id Activity
+  /// every call, so registering one again on every snapshot while still
+  /// ringing is an idempotent update (ActivityStack.register replaces in
+  /// place on a matching id), not a repeated arrival the way a fresh
+  /// alarm-alert id would be.
+  ///
+  /// Split out from the old _refreshClockAwarenessActivity specifically so
+  /// a ringing timer registers at `ringingEvent` tier (see
+  /// buildTimerRingingActivity's own doc comment for why) instead of being
+  /// just another candidate in [_refreshClockTierActivity]'s
+  /// Stopwatch/Timer/Now-Playing contest at the ordinary `clock` tier — a
+  /// ringing timer should preempt an Alert or Now Playing outright, not win
+  /// a popularity contest against them.
+  void _refreshRingingTimerActivity(ClockAwarenessSnapshot snapshot) {
+    if (snapshot.isAlarmRinging) {
+      _stack.register(buildTimerRingingActivity(snapshot));
+    } else {
+      _stack.remove('timer-ringing');
     }
-
-    _nowPlayingVisibility.update(isPlaying: snapshot.isPlaying);
-    if (_nowPlayingVisibility.isHidden) {
-      _stack.remove('now-playing');
-      return;
-    }
-
-    _stack.register(buildNowPlayingActivity(
-      snapshot,
-      audioRoute: _lastAudioRoute,
-      onControlPressed: _startAutoCollapseTimer,
-    ));
   }
 
-  /// Both the stopwatch and timer views share one activity id (see
-  /// buildClockAwarenessActivity) — a plain re-register on every 1Hz tick
-  /// would never bump _topIdGeneration (it only fires on an id *changing*,
-  /// see IslandShell.build), so the stopwatch→timer handback would hard-cut
-  /// instead of cross-fading. Suffixing the id with a generation counter,
-  /// bumped only when [selectClockAwarenessView] actually returns something
-  /// different from last time, gets the cross-fade for the one transition
-  /// that needs it without also fading on every ordinary countdown tick —
-  /// same fix as buildBluetoothConnectionActivity's own sequence number, for
-  /// the same reason.
-  void _refreshClockAwarenessActivity(ClockAwarenessSnapshot snapshot) {
-    _detectAlarmChanges(snapshot.alarms);
+  /// Decides which ONE of {Stopwatch, Timer, Now Playing} — if any — holds
+  /// the shared `clock` tier slot right now, per the exact algorithm
+  /// confirmed with the user:
+  ///
+  /// - A **running stopwatch** wins outright UNLESS a running timer has
+  ///   ≤10s left ([timerPreemptWindow] in clock_awareness_activity.dart),
+  ///   in which case the timer preempts it. Now Playing is irrelevant in
+  ///   this branch even if it's actively playing — confirmed explicitly:
+  ///   "Now Playing is irrelevant whenever stopwatch is running."
+  /// - With **no stopwatch running**: a running timer with ≤1 minute left
+  ///   ([timerVsNowPlayingPreemptWindow]) wins outright; otherwise Now
+  ///   Playing wins if it's currently visible (see
+  ///   [NowPlayingVisibilityGate] — playing, or paused within its own
+  ///   hide-after grace period); otherwise an idle (>1min) running timer
+  ///   still wins by default, since nothing else is contesting the slot;
+  ///   otherwise nothing registers here at all and Dashboard shows through.
+  ///
+  /// A genuinely *ringing* timer never reaches this function — see
+  /// [_refreshRingingTimerActivity] above, called separately at
+  /// `ringingEvent` tier before this one ever runs.
+  ///
+  /// Called from three independent listeners (Now Playing's own snapshot
+  /// stream, the CoreAudio route stream, and the Clock-awareness stream) —
+  /// any one of the three inputs changing can flip who wins the slot, so
+  /// all three re-run the full decision rather than each patching their own
+  /// corner of it.
+  void _refreshClockTierActivity() {
+    final nowPlaying = _lastNowPlaying;
+    _nowPlayingVisibility.update(isPlaying: nowPlaying?.isPlaying ?? false);
+    final nowPlayingVisible = nowPlaying != null && !_nowPlayingVisibility.isHidden;
 
-    // A plain register/remove, not diffed against a remembered previous
-    // value the way _detectAlarmChanges is above — buildAlarmRingingActivity
-    // returns the exact same fixed-id Activity every call, so registering
-    // it again on every snapshot while still ringing is an idempotent
-    // update (ActivityStack.register replaces in place on a matching id),
-    // not a repeated arrival the way a fresh alarm-alert id would be.
-    if (snapshot.isScheduledAlarmRinging) {
-      _stack.register(buildAlarmRingingActivity());
-    } else {
-      _stack.remove('alarm-ringing');
-    }
-
-    final naturalView = selectClockAwarenessView(snapshot, _lastClockAwarenessView);
+    final snapshot = _lastClockAwarenessSnapshot;
+    final hasStopwatch = snapshot?.stopwatch != null;
+    final soonest = snapshot?.soonest;
 
     // A timer held by pause overrides the *view itself* — not just its
-    // widget's own rendering — against whatever selectClockAwarenessView
-    // would otherwise decide, including a real, different view winning on
-    // its own merits (a stopwatch legitimately becoming preferred once the
+    // widget's own rendering — against whatever the algorithm below would
+    // otherwise decide, including a real, different view winning on its
+    // own merits (a stopwatch legitimately becoming preferred once the
     // paused timer drops out of its preempt window). Confirmed live twice
-    // (screen recordings caught both): an earlier version only
-    // intercepted the case where selectClockAwarenessView had *nothing*
-    // left to show at all — a stopwatch still running alongside the
-    // paused timer sailed right past that check, since "show the
-    // stopwatch instead" is a real, non-null decision, not the
-    // null-transition case that check was actually guarding. A second
-    // version fixed that but used a short fixed expiry instead of tying
-    // the hold to the expand/collapse lifecycle — also confirmed wrong:
-    // explicitly requested behavior is that pausing a timer holds its own
-    // view for as long as the expanded card stays open, full stop, not
-    // merely for a couple of seconds before a stopwatch can reclaim the
-    // slot.
-    final view = _timerHeldByPause ? ClockAwarenessView.timer : naturalView;
+    // (screen recordings caught both): an earlier version only intercepted
+    // the case where there was *nothing* else left to show at all — a
+    // stopwatch still running alongside the paused timer sailed right past
+    // that check, since "show the stopwatch instead" is a real, non-null
+    // decision, not the null-transition case that check was actually
+    // guarding. A second version fixed that but used a short fixed expiry
+    // instead of tying the hold to the expand/collapse lifecycle — also
+    // confirmed wrong: explicitly requested behavior is that pausing a
+    // timer holds its own view for as long as the expanded card stays
+    // open, full stop, not merely for a couple of seconds before a
+    // stopwatch (or Now Playing) can reclaim the slot.
+    final winner = _timerHeldByPause && soonest != null
+        ? ClockTierWinner.timer
+        : resolveClockTierWinner(
+            hasStopwatch: hasStopwatch,
+            timerRemaining: soonest?.remaining,
+            nowPlayingVisible: nowPlayingVisible,
+          );
 
-    if (view == null) {
-      _lastClockAwarenessView = null;
-      _stack.remove('clock-awareness-$_clockAwarenessViewGeneration');
-      return;
+    switch (winner) {
+      case ClockTierWinner.stopwatch:
+      case ClockTierWinner.timer:
+        final view = winner == ClockTierWinner.timer ? ClockAwarenessView.timer : ClockAwarenessView.stopwatch;
+        if (view != _lastClockAwarenessView) {
+          _clockAwarenessViewGeneration++;
+        }
+        _lastClockAwarenessView = view;
+        _stack.remove('now-playing');
+        _stack.register(
+          buildClockAwarenessActivity(
+            snapshot!,
+            view,
+            generation: _clockAwarenessViewGeneration,
+            onTimerPauseRequested: _onTimerPauseRequested,
+            onTimerCancelRequested: _onTimerHoldReleased,
+            onTimerResumeRequested: _onTimerHoldReleased,
+          ),
+        );
+      case ClockTierWinner.nowPlaying:
+        _lastClockAwarenessView = null;
+        _stack.remove('clock-awareness-$_clockAwarenessViewGeneration');
+        _stack.register(buildNowPlayingActivity(
+          nowPlaying!,
+          audioRoute: _lastAudioRoute,
+          onControlPressed: _startAutoCollapseTimer,
+        ));
+      case ClockTierWinner.none:
+        _lastClockAwarenessView = null;
+        _stack.remove('clock-awareness-$_clockAwarenessViewGeneration');
+        _stack.remove('now-playing');
     }
-    if (view != _lastClockAwarenessView) {
-      _clockAwarenessViewGeneration++;
-    }
-    _lastClockAwarenessView = view;
-    _stack.register(
-      buildClockAwarenessActivity(
-        snapshot,
-        view,
-        generation: _clockAwarenessViewGeneration,
-        onTimerPauseRequested: _onTimerPauseRequested,
-        onTimerCancelRequested: _onTimerHoldReleased,
-        onTimerResumeRequested: _onTimerHoldReleased,
-      ),
-    );
   }
 
   /// Called the instant the island's own Pause button is tapped — see
@@ -609,19 +682,28 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
   }
 
   void _handleTap() {
-    if (_stack.top?.priority == ActivityPriority.p1Immediate) return; // priority already owns the surface
+    // A ringing alarm/timer already owns the surface until the real
+    // external event resolves — see clock_alarm_activity.dart's own doc
+    // comment.
+    if (_stack.top?.priority == ActivityPriority.ringingEvent) return;
     if (_state == LifecycleState.collapsed || _state == LifecycleState.hover) {
-      setState(() => _state = LifecycleState.expanded);
-      // Expanded is "deliberate enough" to take keyboard focus for its own
-      // shortcuts (space, media keys) — .nonactivatingPanel means this still
-      // never brings Islandia itself to the front over whatever app the
-      // user was in.
-      IslandWindowChannel.setInteractive(true);
-      _focusNode.requestFocus();
-      _contentTransition.forward();
-      _applyFrame(animated: true);
-      _startAutoCollapseTimer();
+      _expand();
     }
+  }
+
+  /// The shared expand sequence — factored out of _handleTap so it can be
+  /// triggered from more than one gesture without duplicating it.
+  void _expand() {
+    setState(() => _state = LifecycleState.expanded);
+    // Expanded is "deliberate enough" to take keyboard focus for its own
+    // shortcuts (space, media keys) — .nonactivatingPanel means this still
+    // never brings Islandia itself to the front over whatever app the
+    // user was in.
+    IslandWindowChannel.setInteractive(true);
+    _focusNode.requestFocus();
+    _contentTransition.forward();
+    _applyFrame(animated: true);
+    _startAutoCollapseTimer();
   }
 
   void _handleOutsideClick() {
@@ -993,7 +1075,7 @@ class _IslandShellState extends State<IslandShell> with TickerProviderStateMixin
                           return AnimatedContainer(
                             duration: IslandMotion.expansionDuration,
                             curve: IslandMotion.expansionCurve,
-                            color: top?.priority == ActivityPriority.p1Immediate ? const Color(0xFF3A1414) : Colors.black,
+                            color: top?.priority == ActivityPriority.ringingEvent ? const Color(0xFF3A1414) : Colors.black,
                             alignment: Alignment.topCenter,
                             child: top == null
                                 ? const SizedBox.shrink()

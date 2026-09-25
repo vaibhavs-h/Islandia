@@ -17,6 +17,15 @@ import 'now_playing_provider.dart';
 /// [onControlPressed] fires after every control button tap (not just
 /// send()) so the shell can reset its auto-collapse clock — a press that
 /// actually changes playback is a relevant interaction, not idle hovering.
+///
+/// `clock` tier, not `dashboard` — sits in the same band as the Clock's
+/// own timer/stopwatch live view, one level above Weather/Battery/Wi-Fi/
+/// Bluetooth. This band isn't a flat tier on its own: island_shell.dart's
+/// own resolveClockTierWinner/_refreshClockTierActivity decides which ONE
+/// of {this, a running stopwatch, a running timer} actually gets
+/// registered at `clock` on any given tick — see that resolver's own doc
+/// comment for the exact ordering (a timer close to completing can
+/// outrank both a running stopwatch and this).
 Activity buildNowPlayingActivity(
   NowPlayingSnapshot snapshot, {
   AudioRouteSnapshot? audioRoute,
@@ -24,7 +33,7 @@ Activity buildNowPlayingActivity(
 }) {
   return Activity(
     id: 'now-playing',
-    priority: ActivityPriority.p3Ambient,
+    priority: ActivityPriority.clock,
     collapsedBuilder: (context, state) => _NowPlayingCollapsed(snapshot: snapshot),
     expandedBuilder: (context, state) => _NowPlayingExpanded(
       snapshot: snapshot,

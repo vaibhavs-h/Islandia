@@ -11,7 +11,7 @@ Activity buildBluetoothBatteryActivity(List<BluetoothDeviceBattery> devices) {
   final sorted = sortedByBatteryAscending(devices);
   return Activity(
     id: 'bluetooth-battery',
-    priority: ActivityPriority.p3Ambient,
+    priority: ActivityPriority.dashboard,
     collapsedBuilder: (context, state) => _BluetoothBatteryCollapsed(devices: sorted),
     expandedBuilder: (context, state) => _BluetoothBatteryExpanded(devices: sorted),
   );
@@ -24,8 +24,8 @@ Activity buildBluetoothBatteryActivity(List<BluetoothDeviceBattery> devices) {
 int _connectionNotificationSequence = 0;
 
 /// A device joining or leaving the battery-tracked set (§05, v1 tier) —
-/// P2 important, transient, same shape as the timer-complete notification:
-/// announces itself once and ages out on its own after 5s via the engine's
+/// Alert tier, transient: announces itself once and ages out on its own
+/// after 5s via the engine's
 /// own timeout handling. Scoped to the same devices BluetoothBatteryProvider
 /// already tracks (the standard GATT Battery Service), not every Bluetooth
 /// device macOS knows about.
@@ -50,7 +50,7 @@ Activity buildBluetoothConnectionActivity({required String deviceName, required 
   final effectiveBatteryPercent = connected ? batteryPercent : null;
   return Activity(
     id: 'bluetooth-connection-$_connectionNotificationSequence',
-    priority: ActivityPriority.p2Important,
+    priority: ActivityPriority.alert,
     isTransient: true,
     autoDismissAfter: const Duration(seconds: 5),
     // Two distinct widgets, not one shared instance — see

@@ -22,25 +22,33 @@ void main() {
 
     test('a higher-priority activity preempts — takes the top slot without removing the other', () {
       final stack = ActivityStack()
-        ..register(_activity('now-playing', ActivityPriority.p3Ambient))
-        ..register(_activity('call', ActivityPriority.p1Immediate));
+        ..register(_activity('now-playing', ActivityPriority.dashboard))
+        ..register(_activity('call', ActivityPriority.ringingEvent));
 
       expect(stack.top!.id, 'call');
       expect(stack.entries.map((e) => e.id), ['call', 'now-playing']);
     });
 
+    test('shelf outranks every other tier, including a ringing alarm/timer', () {
+      final stack = ActivityStack()
+        ..register(_activity('call', ActivityPriority.ringingEvent))
+        ..register(_activity('shelf', ActivityPriority.shelf));
+
+      expect(stack.top!.id, 'shelf');
+    });
+
     test('a lower-priority activity does not preempt the current top', () {
       final stack = ActivityStack()
-        ..register(_activity('call', ActivityPriority.p1Immediate))
-        ..register(_activity('now-playing', ActivityPriority.p3Ambient));
+        ..register(_activity('call', ActivityPriority.ringingEvent))
+        ..register(_activity('now-playing', ActivityPriority.dashboard));
 
       expect(stack.top!.id, 'call');
     });
 
     test('equal priority: most-recently-registered wins the top slot', () {
       final stack = ActivityStack()
-        ..register(_activity('weather', ActivityPriority.p3Ambient))
-        ..register(_activity('now-playing', ActivityPriority.p3Ambient));
+        ..register(_activity('weather', ActivityPriority.dashboard))
+        ..register(_activity('now-playing', ActivityPriority.dashboard));
 
       expect(stack.top!.id, 'now-playing');
       expect(stack.entries.map((e) => e.id), ['now-playing', 'weather']);
@@ -48,8 +56,8 @@ void main() {
 
     test('removing the top restores whatever is now highest-priority — never recreated, just re-shown', () {
       final stack = ActivityStack()
-        ..register(_activity('now-playing', ActivityPriority.p3Ambient))
-        ..register(_activity('call', ActivityPriority.p1Immediate));
+        ..register(_activity('now-playing', ActivityPriority.dashboard))
+        ..register(_activity('call', ActivityPriority.ringingEvent));
 
       stack.remove('call');
 
@@ -57,7 +65,7 @@ void main() {
     });
 
     test('removing an id that is not present is a no-op and does not notify listeners', () {
-      final stack = ActivityStack()..register(_activity('now-playing', ActivityPriority.p3Ambient));
+      final stack = ActivityStack()..register(_activity('now-playing', ActivityPriority.dashboard));
       var notified = false;
       stack.addListener(() => notified = true);
 
@@ -69,13 +77,13 @@ void main() {
 
     test('re-registering an existing id updates it in place instead of jumping the queue', () {
       final stack = ActivityStack()
-        ..register(_activity('battery', ActivityPriority.p3Ambient))
-        ..register(_activity('now-playing', ActivityPriority.p3Ambient));
+        ..register(_activity('battery', ActivityPriority.dashboard))
+        ..register(_activity('now-playing', ActivityPriority.dashboard));
 
       // A provider pushing a fresh value for something already on the stack
       // (a battery percentage ticking down) must not steal the top slot back
       // from whatever legitimately holds it via recency.
-      stack.register(_activity('battery', ActivityPriority.p3Ambient));
+      stack.register(_activity('battery', ActivityPriority.dashboard));
 
       expect(stack.entries.map((e) => e.id), ['now-playing', 'battery']);
       expect(stack.entries.length, 2);
@@ -86,7 +94,7 @@ void main() {
       var notifications = 0;
       stack.addListener(() => notifications++);
 
-      stack.register(_activity('now-playing', ActivityPriority.p3Ambient));
+      stack.register(_activity('now-playing', ActivityPriority.dashboard));
       stack.remove('now-playing');
 
       expect(notifications, 2);
@@ -95,7 +103,7 @@ void main() {
     test('an activity with autoDismissAfter ages out on its own, no action needed', () {
       fakeAsync((async) {
         final stack = ActivityStack()
-          ..register(_activity('timer-complete', ActivityPriority.p2Important, autoDismissAfter: const Duration(seconds: 5)));
+          ..register(_activity('timer-complete', ActivityPriority.alert, autoDismissAfter: const Duration(seconds: 5)));
 
         expect(stack.top!.id, 'timer-complete');
 
@@ -110,12 +118,12 @@ void main() {
     test('re-registering the same id restarts its auto-dismiss clock instead of stacking a second timer', () {
       fakeAsync((async) {
         final stack = ActivityStack();
-        stack.register(_activity('timer-complete', ActivityPriority.p2Important, autoDismissAfter: const Duration(seconds: 5)));
+        stack.register(_activity('timer-complete', ActivityPriority.alert, autoDismissAfter: const Duration(seconds: 5)));
 
         async.elapse(const Duration(seconds: 4));
         // A fresh push (e.g. an updated value) resets the countdown rather
         // than letting the original timer fire out from under the new value.
-        stack.register(_activity('timer-complete', ActivityPriority.p2Important, autoDismissAfter: const Duration(seconds: 5)));
+        stack.register(_activity('timer-complete', ActivityPriority.alert, autoDismissAfter: const Duration(seconds: 5)));
 
         async.elapse(const Duration(seconds: 4));
         expect(stack.top!.id, 'timer-complete', reason: 'clock restarted, so only 4s has elapsed since the refresh');
@@ -128,7 +136,7 @@ void main() {
     test('removing an activity before it ages out cancels the pending timer', () {
       fakeAsync((async) {
         final stack = ActivityStack()
-          ..register(_activity('timer-complete', ActivityPriority.p2Important, autoDismissAfter: const Duration(seconds: 5)));
+          ..register(_activity('timer-complete', ActivityPriority.alert, autoDismissAfter: const Duration(seconds: 5)));
 
         stack.remove('timer-complete');
         var notifications = 0;

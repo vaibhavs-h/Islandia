@@ -1,8 +1,39 @@
 import 'package:flutter/widgets.dart';
 
-/// §03 of the blueprint: the five-tier total order the Activity Stack sorts
-/// by. Lower index = higher priority = closer to the top of the stack.
-enum ActivityPriority { p0Critical, p1Immediate, p2Important, p3Ambient, p4Background }
+/// The five-tier total order the Activity Stack sorts by. **Declaration
+/// order is what matters, not the name** — `ActivityStack.register` sorts
+/// by `priority.index`, and a *lower* index sorts earlier in the stack's
+/// own list (`top` is `_entries.first`), so whatever's declared **first**
+/// here is the **highest** priority, closer to the top. (An earlier
+/// version of this enum used a `p1`...`p5` numeric prefix and got bitten
+/// by exactly this — `p1` read as "first/top priority" but the intended
+/// meaning was "lowest tier"; plain names avoid that trap entirely.)
+///
+/// - `shelf`: the Shelf, holding a dragged-in file/folder/text. Always
+///   wins — never overlaid by anything else in this stack (the privacy
+///   dots are a separate, independent overlay outside this priority
+///   system entirely; see island_shell.dart's own `_privacyDots()`).
+/// - `ringingEvent`: a ringing alarm OR a completed/ringing timer — both
+///   share the same real behavior (no auto-dismiss, blocks taps, resolved
+///   only by the actual external event ending), so they share this one
+///   tier rather than each inventing its own.
+/// - `alert`: a brief, self-dismissing notification — Wi-Fi connect/
+///   disconnect, low battery, a mic/camera/screen-capture indicator, an
+///   alarm created/deleted/edited/enabled/disabled, a severe-weather or
+///   calamity alert.
+/// - `clock`: **Now Playing lives at this tier too** — it doesn't get its
+///   own named value because neither it nor the Clock's timer/stopwatch
+///   view has one FIXED priority relative to each other; which ONE of
+///   {Now Playing, a running stopwatch, a running timer} actually gets
+///   registered at `clock` on any given tick is decided dynamically by
+///   island_shell.dart's own resolver (a timer close to completing can
+///   outrank a running stopwatch; see that resolver's own doc comment for
+///   the exact ordering) — a single static enum value can't express that,
+///   so this tier is a shared slot all three compete for, not "the Clock
+///   activity's" tier alone.
+/// - `dashboard`: the normal resting state — Weather, Battery, Wi-Fi,
+///   Bluetooth. Shows whenever nothing higher is currently relevant.
+enum ActivityPriority { shelf, ringingEvent, alert, clock, dashboard }
 
 /// The five states every activity's collapsed/expanded content is built for.
 /// `collapsing` exists so a hover that resolves mid-expand can reverse

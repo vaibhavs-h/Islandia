@@ -92,7 +92,7 @@ void main() {
       final activity = buildWeatherActivity(_snapshot());
 
       expect(activity.id, 'weather');
-      expect(activity.priority, ActivityPriority.p3Ambient);
+      expect(activity.priority, ActivityPriority.dashboard);
       expect(activity.isTransient, isFalse);
     });
   });
@@ -167,7 +167,7 @@ void main() {
     testWidgets('is P2 important, transient, and auto-dismisses after 5s', (tester) async {
       final activity = buildSevereWeatherAlertActivity(_snapshot(weatherCode: 65, isSevere: true));
 
-      expect(activity.priority, ActivityPriority.p2Important);
+      expect(activity.priority, ActivityPriority.alert);
       expect(activity.isTransient, isTrue);
       expect(activity.autoDismissAfter, const Duration(seconds: 5));
     });

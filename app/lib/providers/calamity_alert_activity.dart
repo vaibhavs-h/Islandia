@@ -14,7 +14,7 @@ import 'calamity_alert_provider.dart';
 Activity buildCalamityAlertActivity(CalamityAlert alert) {
   return Activity(
     id: 'calamity-${alert.id}',
-    priority: ActivityPriority.p2Important,
+    priority: ActivityPriority.alert,
     isTransient: true,
     autoDismissAfter: const Duration(seconds: 5),
     collapsedBuilder: (context, state) => _CalamityAlertContent(alert: alert, expanded: false),

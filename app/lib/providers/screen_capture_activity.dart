@@ -11,7 +11,7 @@ import '../engine/activity.dart';
 Activity buildScreenCaptureActivity() {
   return Activity(
     id: 'screen-capture-activity',
-    priority: ActivityPriority.p2Important,
+    priority: ActivityPriority.alert,
     collapsedBuilder: (context, state) => const _ScreenCaptureActiveContent(),
     expandedBuilder: (context, state) => const _ScreenCaptureActiveContent(),
   );

@@ -8,7 +8,7 @@ import '../engine/activity.dart';
 Activity buildCameraActivity() {
   return Activity(
     id: 'camera-activity',
-    priority: ActivityPriority.p2Important,
+    priority: ActivityPriority.alert,
     collapsedBuilder: (context, state) => const _CameraActiveContent(),
     expandedBuilder: (context, state) => const _CameraActiveContent(),
   );

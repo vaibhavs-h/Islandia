@@ -10,7 +10,7 @@ import 'battery_provider.dart';
 Activity buildBatteryActivity(BatterySnapshot snapshot) {
   return Activity(
     id: 'battery',
-    priority: ActivityPriority.p3Ambient,
+    priority: ActivityPriority.dashboard,
     collapsedBuilder: (context, state) => _BatteryCollapsed(snapshot: snapshot),
     expandedBuilder: (context, state) => _BatteryExpanded(snapshot: snapshot),
   );
