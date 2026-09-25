@@ -104,6 +104,35 @@ _WeatherMotion _motionFor(int weatherCode, {required bool isDay}) {
   return _WeatherMotion.cloudDrift;
 }
 
+/// The moon's pulse scale for a given point in its own 0→1 cycle (see
+/// [_WeatherMotion.pulse]'s own call site for how [pulsePhase] itself is
+/// derived from the shared 60s controller). A raw, symmetric `cos()` here
+/// — the original version — moves at constant speed through the middle of
+/// each half and eases only right at the two peaks: mathematically smooth,
+/// no dropped frames, but reported live as reading "mechanical" rather than
+/// like organic breathing. Real breathing (and most natural pulsing
+/// motion) is asymmetric in TIMING, not just amplitude: a quicker, more
+/// eager expansion, then a slower, gentler settle back down — this splits
+/// the cycle into its own expand (0→[_pulseExpandFraction], easeOutSine)
+/// and contract ([_pulseExpandFraction]→1, easeInOutSine) segments with two
+/// different named Curves, rather than one symmetric trig function driving
+/// the whole thing, which is what actually produces that feel. Continuous
+/// at both the expand/contract seam and the 0/1 wraparound — both curves
+/// evaluate to the same eased value there (0.0 at the wrap, 1.0 at the
+/// seam), so there's no visible jump at either point despite the piecewise
+/// definition.
+double _pulseScale(double pulsePhase) {
+  final double eased;
+  if (pulsePhase < _pulseExpandFraction) {
+    eased = Curves.easeOutSine.transform(pulsePhase / _pulseExpandFraction);
+  } else {
+    eased = 1.0 - Curves.easeInOutSine.transform((pulsePhase - _pulseExpandFraction) / (1.0 - _pulseExpandFraction));
+  }
+  return 1.0 + 0.05 * eased;
+}
+
+const _pulseExpandFraction = 0.35;
+
 /// The expanded card's weather icon, with a small looping motion layered
 /// on top matching the condition — a slow rotation for a sun, a gentle
 /// pulse for a moon, a drifting second cloud, drifting droplets/flakes
@@ -170,8 +199,7 @@ class _AnimatedWeatherIconState extends State<_AnimatedWeatherIcon> with SingleT
             // this.
             final elapsedSeconds = t * 60;
             final pulsePhase = (elapsedSeconds % 2.0) / 2.0;
-            final scale = 1.0 + 0.05 * (0.5 - 0.5 * math.cos(pulsePhase * 2 * math.pi));
-            return Transform.scale(scale: scale, child: child);
+            return Transform.scale(key: const ValueKey('weather-pulse-scale'), scale: _pulseScale(pulsePhase), child: child);
           case _WeatherMotion.rain:
           case _WeatherMotion.snow:
             return Stack(

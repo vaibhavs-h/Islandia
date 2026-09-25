@@ -196,4 +196,89 @@ void main() {
       expect(find.byType(Center), findsWidgets);
     });
   });
+
+  group('moon pulse animation', () {
+    double pulseScaleAt(WidgetTester tester) {
+      final transform = tester.widget<Transform>(find.byKey(const ValueKey('weather-pulse-scale')));
+      // The X-axis scale term, read directly from the matrix's own raw
+      // storage — Matrix4.getMaxScaleOnAxis() is unreliable exactly at
+      // 0.0 scale (reports 1.0 for a genuinely zero-scaled matrix), a real
+      // quirk confirmed while writing shelf_activity_test.dart's own
+      // animation tests; reading storage[0] sidesteps it and reflects the
+      // actual value the pulse was built with. Not load-bearing here (the
+      // pulse never actually reaches exactly 0.0 scale — its range is
+      // 1.0–1.05, nowhere near the degenerate case), but kept as the same
+      // reliable technique either way rather than two different patterns
+      // for what's really the same kind of assertion.
+      return transform.transform.storage[0];
+    }
+
+    Future<void> pumpMoonAt(WidgetTester tester, Duration elapsed) async {
+      final activity = buildWeatherActivity(_snapshot(weatherCode: 0, isDay: false));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Material(child: Builder(builder: (context) => activity.expandedBuilder(context, LifecycleState.expanded))),
+        ),
+      );
+      await tester.pump(elapsed);
+    }
+
+    testWidgets('starts at rest (scale 1.0) right at the cycle boundary', (tester) async {
+      await pumpMoonAt(tester, Duration.zero);
+      expect(pulseScaleAt(tester), closeTo(1.0, 0.001));
+    });
+
+    testWidgets('is at its largest partway through the expansion segment', (tester) async {
+      // pulsePhase cycles every 2s; the expand segment is its first 35%,
+      // i.e. the first 700ms — comfortably inside that window, not right
+      // at either edge.
+      await pumpMoonAt(tester, const Duration(milliseconds: 400));
+      final scale = pulseScaleAt(tester);
+      expect(scale, greaterThan(1.0));
+      expect(scale, lessThan(1.05));
+    });
+
+    testWidgets('peaks at the full 5% right at the expand/contract seam, with no jump across it', (tester) async {
+      // The seam is at exactly 35% of the 2s cycle = 700ms. Both readings
+      // come from the SAME pump/controller, advanced incrementally from
+      // 699ms to 701ms — calling pumpMoonAt a second time here would spin
+      // up a completely independent controller/ticker rather than
+      // advancing the existing one, which measures something else
+      // entirely (confirmed while writing this test: two independent
+      // 699ms-then-701ms pumpMoonAt calls do NOT read as 2ms apart on the
+      // pulse's own timeline at all).
+      await pumpMoonAt(tester, const Duration(milliseconds: 699));
+      final justBefore = pulseScaleAt(tester);
+      await tester.pump(const Duration(milliseconds: 2));
+      final justAfter = pulseScaleAt(tester);
+
+      expect(justBefore, closeTo(1.05, 0.002));
+      expect(justAfter, closeTo(1.05, 0.002));
+      // The whole point of splitting expand/contract into two curves
+      // sharing one seam value — this must never read as a visible snap.
+      expect((justAfter - justBefore).abs(), lessThan(0.002));
+    });
+
+    testWidgets('settles back down through the contract segment, past its halfway point', (tester) async {
+      // 1500ms is 75% through the 2s cycle — well into the contract
+      // segment (which runs from 700ms to 2000ms), past its own midpoint.
+      await pumpMoonAt(tester, const Duration(milliseconds: 1500));
+      final scale = pulseScaleAt(tester);
+      expect(scale, greaterThan(1.0));
+      expect(scale, lessThan(1.03), reason: 'should already be noticeably settled back down, not still near the 1.05 peak');
+    });
+
+    testWidgets('returns to rest with no jump across the 2s cycle wraparound', (tester) async {
+      // Same reasoning as the expand/contract seam test above — one
+      // controller, advanced incrementally, not two independent ones.
+      await pumpMoonAt(tester, const Duration(milliseconds: 1999));
+      final justBefore = pulseScaleAt(tester);
+      await tester.pump(const Duration(milliseconds: 2));
+      final justAfter = pulseScaleAt(tester);
+
+      expect(justBefore, closeTo(1.0, 0.002));
+      expect(justAfter, closeTo(1.0, 0.002));
+      expect((justAfter - justBefore).abs(), lessThan(0.002));
+    });
+  });
 }
